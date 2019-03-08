@@ -23,9 +23,9 @@ abstract class CodersApp{
     
     /**
      * @author Jaume Llopis <jaume@mnkcoder.com>
-     * @var \CodersApp[] Singleton of Instances
+     * @var \CodersApp Singleton of Instances
      */
-    private static $_instanceMgr = [];
+    private static $_instance = NULL;
     /**
      * @var \CODERS\Framework\HookManager
      */
@@ -110,19 +110,6 @@ abstract class CodersApp{
                 plugin_dir_url(__FILE__) );
     }
     /**
-     * @param string $name
-     * @param array $arguments
-     * @return mixed|boolean
-     */
-    public static final function __callStatic( $name, $arguments) {
-        switch( $name ){
-            case 'instance':
-                return self::__instance( sprintf('coders-%s',self::nominalize( self::applicationName())));
-        }
-        
-        return FALSE;
-    }
-    /**
      * @return CodersApp
      */
     private final function __initializeFramework(){
@@ -194,21 +181,31 @@ abstract class CodersApp{
         
         return $this;
     }
-
+    /**
+     * @return boolean
+     */
+    public final function hasHooks(){
+        return !is_null($this->_hookMgr);
+    }
+    /**
+     * @return \CODERS\Framework\HookManager
+     */
+    public final function hooks(){
+        return $this->_hookMgr;
+    }
     /**
      * 
-     * @param String $app
+     * @param string $view
      * @return \CodersApp
      */
-    protected static final function __instance( $app ){
+    public function response( $view = '' ){
+
+        //capture request here
+        //$request = \CODERS\Framework\Providers\Request::importRequest();
         
-        if(!array_key_exists($app,self::$_instanceMgr)){
-            //si es nulo, simplemente devuelve nulo (se utilizará como invalidador)
-            self::$_instanceMgr[ $app ] = self::importApplication( $app );
-            
-        }
+        //execute controller here
         
-        return self::$_instanceMgr[$app];
+        return $this;
     }
     /**
      * @param string $option
@@ -282,7 +279,7 @@ abstract class CodersApp{
      * @param string $application
      * @return \CodersApp
      */
-    private static final function importApplication( $application ){
+    private static final function __instance( $application ){
 
         //$path = sprintf('%s/modules/%s/%s.module.php',CODERS_FRAMEWORK_BASE ,$name,$name);
         $path = sprintf('%s/../%s/application.php',__DIR__,$application);
@@ -290,7 +287,6 @@ abstract class CodersApp{
         $class = sprintf('%sApp',self::classify($application) );
         
         if(file_exists($path)){
-
             require_once $path;
             
             if(class_exists($class) && is_subclass_of( $class , self::class,TRUE)){
@@ -302,7 +298,8 @@ abstract class CodersApp{
             }
         }
         else{
-            die(sprintf('INVALID PATH [%s]',$path) );
+            throw new Exception(sprintf('INVALID PATH [%s]',$path) );
+            //die(sprintf('INVALID PATH [%s]',$path) );
         }
         
         return NULL;
@@ -370,13 +367,19 @@ abstract class CodersApp{
     }
     /**
      * Inicialización
+     * Cada llamada a esta instancia se realiza solo en el contexto de la
+     * petición del usuario sobre una única aplicacion. No es necesario
+     * trabajar con diferentes instancias a la vez si tenemos varias aplicaciones
+     * sobre este framework. Simplemente, se cargará la aplicación adecuada
+     * dentro de su espacio a cada llamada requerida desde el plugin activo.
+     * 
      * @author Jaume Llopis <jaume@mnkcoder.com>
      * @return \CodersApp
      */
-    /*public static final function instance(){
+    public static final function instance(){
         
         return self::$_instance;
-    }*/
+    }
     /**
      * Inicialización
      * @author Jaume Llopis <jaume@mnkcoder.com>
@@ -388,11 +391,12 @@ abstract class CodersApp{
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
         }
-        else{
-            return strlen($application) ? self::__instance( $application ) : NULL;
+        
+        if( is_null(self::$_instance) && strlen($application)){
+            self::$_instance = strlen($application) ? self::__instance( $application ) : NULL;
         }
         
-        return NULL;
+        return self::instance();
     }
 }
 

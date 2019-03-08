@@ -47,26 +47,29 @@ final class HookManager{
         
         $this->_app = strval($app);
         
-        $this->redirectEndPoint()
-                ->redirectTemplate()
-                ->customHooks();
+        //administración
+        $this->hookAdmin()
+                //ruta publica permalink/GET
+                ->hookEndPoint()
+                //redirección publica
+                ->hookTemplate()
+                //personalizaciones
+                ->hookCustom();
     }
     /**
      * Redirect Template
      * @return \CODERS\Framework\HookManager
      */
-    private final function redirectTemplate(){
-        
-        $app = $this->_app;
+    private final function hookTemplate(){
         
         /* Handle template redirect according the template being queried. */
-        add_action( self::HOOK_TEMPLATE_REDIRECT, function() use( $app ){
+        add_action( self::HOOK_TEMPLATE_REDIRECT, function(){
 
             global $wp;
 
             $query = $wp->query_vars;
 
-            $instance = \CodersApp::init($app);
+            $instance = \CodersApp::instance();
             
             if( !is_null($instance)){
 
@@ -80,8 +83,10 @@ final class HookManager{
                     global $wp_query;
 
                     $wp_query->set('is_404', false);
+                    
+                    $instance->response( $view );
 
-                    $instance->redirect_template( $view );
+                    //$instance->redirect_template( $view );
 
                     ///add ending wordpress hooks?
                     
@@ -96,7 +101,7 @@ final class HookManager{
      * Redirect End Point
      * @return \CODERS\Framework\HookManager
      */
-    private final function redirectEndPoint(){
+    private final function hookEndPoint(){
 
         $app = $this->_app;
         
@@ -104,13 +109,13 @@ final class HookManager{
 
             global $wp, $wp_rewrite;
             
-            $instance = \CodersApp::init($app);
+            $instance = \CodersApp::instance();
             
             if( !is_null($instance)){
                 
                 $view = $instance->getOption('template', 'default');
 
-                $endpoint = $instance->redirect_locale($view);
+                $endpoint = $instance->endPoint($view);
 
                 $wp->add_query_var( 'template' );   
 
@@ -128,10 +133,19 @@ final class HookManager{
         return $this;
     }
     /**
+     * Hook para la página de administración del plugin
+     * @return \CODERS\Framework\HookManager
+     */
+    private final function hookAdmin(){
+
+        
+        return $this;
+    }
+    /**
      * Cargador de hooks personalizados
      * @return \CODERS\Framework\HookManager
      */
-    private final function customHooks(){
+    private final function hookCustom(){
         
         $path = sprintf('%s/hooks.php', \CodersApp::applicationPath());
         
