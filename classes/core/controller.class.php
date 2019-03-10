@@ -14,24 +14,17 @@ abstract class Controller extends Component{
      */
     private $_redirections = 0;
     /**
-     * Crea un gestor de vistas
-     * @return \TripManRenderer
-     */
-    protected final function createView(){
-        return TripManRenderer::createRender(TripManager::instance()->getProfile());
-    }
-    /**
      * Ejecuta el controlador
-     * @param TripManRequestProvider $request
+     * @param \CODERS\Framework\Request $request
      * @return bool
      */
-    public function action( TripManRequestProvider $request ){
+    public function __execute( Request $request ){
         
-        $callback = sprintf('%s_action', $request->getAction());
+        $action = sprintf('%s_action', $request->action());
         
-        if(method_exists($this, $callback)){
+        if(method_exists($this, $action)){
             
-            return $this->$callback( $request );
+            return $this->$action( $request );
         }
         
         TripManLogProvider::error(
@@ -44,66 +37,47 @@ abstract class Controller extends Component{
      * @return string
      */
     public function __toString() {
-        return parent::__toString();
+        return \CodersApp::nominalize(parent::__toString());
     }
     /**
      * Genera un error (visual o redirigido a un log)
-     * @param TripManRequestProvider $request
+     * @param \CODERS\Framework\Request $request
      * @return boolean
      */
-    protected function error_action( TripManRequestProvider $request ){
+    protected function error_action( Providers\Request $request ){
         
-        $model = TripManager::createModel('Error',$request);
-        
-        $callback = $request->get(TripManRequestProvider::EVENT_DATA_CALLBACK,'');
-        
-        $display = TripManRenderer::createRender(TripManager::instance()->getProfile());
-        
-        if(strlen($callback)){
-            //botón para reddirigir a otro contexto
-            $display->set(TripManRequestProvider::EVENT_DATA_CALLBACK, $callback);
-        }
-        
-        $display->set('display_notifier', false)->setModel($model)->render('error');
+        var_dump($request);
         
         return FALSE;
     }
     /**
      * Acción por defecto del controlador
      */
-    abstract protected function default_action( TripManRequestProvider $request );
+    abstract protected function default_action( Providers\Request $request );
     /**
      * Carga un controlador. Retorna un controlador de error si no se ha encontrado el deseado
      * @param string $context Controlador a cargar
-     * @param string|null $module Carga un controlador del modulo en uso
-     * @return \TripManController
+     * @return \CODERS\Framework\Controller
      */
-    public static final function loadController( $context , $module = null ){
+    public static final function create( $context ){
         
-        if(is_null($module)){
-            $module = TripManager::instance()->getProfile();
-        }
+        $module = '';
         
         $base_path = sprintf('%scomponents/controllers/%s.controller.php',
                 MNK__TRIPMAN__DIR,  strtolower( $context ) );
         
-        $module_path = !is_null($module) ?
+        $app_path = !is_null($module) ?
                 sprintf('%smodules/%s/controllers/%s.controller.php',
                 MNK__TRIPMAN__DIR,  $module,  strtolower( $context ) ) :
                 null;
         
         $class = sprintf('TripMan%sController',$context);
         
-        //var_dump($base_path);
-        //var_dump($module_path);
-        //var_dump($class);
-        
-        
         if( !is_null($module)){
             
-            if( file_exists($module_path) ){
+            if( file_exists($app_path) ){
                 
-                require_once $module_path;
+                require_once $app_path;
                 
             }
             elseif(file_exists($base_path)){
@@ -128,25 +102,15 @@ abstract class Controller extends Component{
     }
     /**
      * Redirige un controlador a otro (mucho ojo a las redirecciones, máximo 3)
-     * @param \TripManRequestProvider $request
+     * @param \\CODERS\Framework\Request $request
      * @return \TripManController
      */
-    public function redirect( \TripManRequestProvider $request ){
+    public function redirect( Providers\Request  $request ){
         if( $this->_redirections < self::MAX_REDIRECTIONS ){
             return self::loadController($request->getContext());
         }
         return $this;
     }
-    /**
-     * @return string Nombre del controlador (contexto)
-     */
-    public function getName() {
-        //parent::getName();
-        
-        $class = get_class($this);
-        //Controller
-        $suffix_length = strlen($class) - strrpos($class, 'Controller');
-        //TripMan[NOMBRE]Controller
-        return strtolower( substr($class, 7, strlen($class) - $suffix_length - 7 ) );
-    }
 }
+
+

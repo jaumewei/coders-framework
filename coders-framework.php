@@ -23,9 +23,13 @@ abstract class CodersApp{
     
     /**
      * @author Jaume Llopis <jaume@mnkcoder.com>
-     * @var \CodersApp Singleton of Instances
+     * @var \CodersApp[] Singleton of Instances
      */
-    private static $_instance = NULL;
+    private static $_instance = [];
+    /**
+     * @var string
+     */
+    private $_key = '';
     /**
      * @var \CODERS\Framework\HookManager
      */
@@ -43,8 +47,10 @@ abstract class CodersApp{
             'widget'],
         self::TYPE_CORE => [
             'component',
+            'db',           //wpdb helper
             'hook-manager',
             'dictionary',
+            'request',      //inputs
             'controller',
             'renderer',
             'service',
@@ -65,48 +71,68 @@ abstract class CodersApp{
     /**
      * 
      */
-    protected function __construct() {
-        
-        $this->__initializeFramework()->__hook();
-        
+    protected function __construct( $key = '' ) {
+        //
+        $this->_key = strlen($key) > 3 ? $key : self::appKey(strval($this));
+        //
+        $this->__initializeFramework()->__hook()->__init();
     }
     /**
      * @return string
      */
     public final function __toString() {
-        return self::nominalize(get_class($this));
-    }
-    /**
-     * @return string
-     */
-    public static final function applicationName(){
-        $application = get_called_class();
-        if(substr($application, 0,6) === 'Coders'){
-            $to = strrpos($application, 'App');
-            if( $to > 6 ){
-                return substr($application, 6, $to - 6 ) ;
-            }
+        
+        $class = get_class($this);
+        
+        if(substr($class, strlen($class)-3) === 'App'){
+            
+            $class = substr($class, 0, strlen($class)-3);
         }
-        return '';
+        
+        return self::nominalize($class);
     }
     /**
      * Ruta local de contenido de la aplicación
      * @return string
      */
-    public static final function applicationPath(){
+    public final function appPath(){
         
-        return sprintf('%s/../coders-%s/',
+        // within either sub or parent class in a static method
+        $ref = new ReflectionClass(get_called_class());
+        // within either sub or parent class, provided the instance is a sub class
+        //$ref = new \ReflectionObject($this);
+        // filename
+        return dirname( $ref->getFileName() );
+
+        /*return sprintf('%s/../coders-%s/',
                 plugin_dir_path(__FILE__) ,
-                self::nominalize( self::applicationName() ) );
+                self::nominalize( self::appName() ) );*/
     }
+    /**
+     * @return string
+     */
+    public final function appName(){
+        return strval($this);
+        //$application = strval($this);
+        //$application = self::nominalize( get_called_class() );
+        //return $application;
+        /*if(substr($application, 0,6) === 'Coders'){
+            $to = strrpos($application, 'App');
+            if( $to > 6 ){
+                return substr($application, 6, $to - 6 ) ;
+            }
+        }
+        return '';*/
+    }
+ 
     /**
      * Ruta URL de contenido de la aplicación
      * @return string
      */
-    public static final function applicationURL( ){
+    public final function appURL( ){
         
         return preg_replace( '/coders-framework/',
-                sprintf('coders-%s',self::applicationName()),
+                $this->appName(),
                 plugin_dir_url(__FILE__) );
     }
     /**
@@ -132,6 +158,10 @@ abstract class CodersApp{
         }
         return $this;
     }
+    /**
+     * Initializer
+     */
+    abstract protected function __init();
     /**
      * @param string $view
      * @param boolean $getLocale
@@ -176,6 +206,7 @@ abstract class CodersApp{
     private final function __hook(){
 
         if(class_exists('\CODERS\Framework\HookManager')){
+    
             $this->_hookMgr = new \CODERS\Framework\HookManager( $this );
         }
         
@@ -185,25 +216,66 @@ abstract class CodersApp{
      * @return boolean
      */
     public final function hasHooks(){
+        
         return !is_null($this->_hookMgr);
     }
     /**
      * @return \CODERS\Framework\HookManager
      */
     public final function hooks(){
+        
         return $this->_hookMgr;
     }
     /**
+     * @return \CODERS\Framework\Request|boolean
+     */
+    public function request(){
+        
+        if(class_exists('\CODERS\Framework\Request')){
+            
+            return new \CODERS\Framework\Request( strval($this) );
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @return \CODERS\Framework\DB|boolean
+     */
+    public function db(){
+        
+        if(class_exists('\CODERS\Framework\DB')){
+            return new \CODERS\Framework\DB( $this->_key );
+        }
+        
+        return FALSE;
+    }
+    /**
      * 
-     * @param string $view
      * @return \CodersApp
      */
-    public function response( $view = '' ){
+    public function response( ){
 
-        //capture request here
-        //$request = \CODERS\Framework\Providers\Request::importRequest();
-        
-        //execute controller here
+        if( class_exists('CODERS\Framework\Controller') ){
+
+            $request = $this->request();
+
+            if( $request !== FALSE ){
+                try{
+                    $context = \CODERS\Framework\Controller::create( $request->context( ) );
+
+                    if( !is_null($context)){
+
+                        if( !$context->__execute( $request ) ){
+
+                            //
+                        }
+                    }
+                }
+                catch (Exception $ex) {
+                    die( $ex->getMessage());
+                }
+            }
+        }
         
         return $this;
     }
@@ -239,7 +311,8 @@ abstract class CodersApp{
     protected function register( $component , $type = self::TYPE_MODELS ){
         
         if( $type > self::TYPE_CORE ){
-            if(array_key_exists($type, $this->_components) && !in_array( $component ,$this->_components[$type]) ){
+            if(array_key_exists($type, $this->_components)
+                    && !in_array( $component ,$this->_components[$type]) ){
                 $this->_components[ $type ][] = $component;
             }
         }
@@ -279,7 +352,7 @@ abstract class CodersApp{
      * @param string $application
      * @return \CodersApp
      */
-    private static final function __instance( $application ){
+    private static final function __instance( $application , $key ){
 
         //$path = sprintf('%s/modules/%s/%s.module.php',CODERS_FRAMEWORK_BASE ,$name,$name);
         $path = sprintf('%s/../%s/application.php',__DIR__,$application);
@@ -287,14 +360,15 @@ abstract class CodersApp{
         $class = sprintf('%sApp',self::classify($application) );
         
         if(file_exists($path)){
+            
             require_once $path;
             
-            if(class_exists($class) && is_subclass_of( $class , self::class,TRUE)){
+            if(class_exists($class) && is_subclass_of( $class , self::class , TRUE ) ){
 
-                return new $class();
+                return new $class( $key );
             }
             else{
-                die(sprintf('INVALID APPLICATION [%s]',$class) );
+                throw new Exception(sprintf('INVALID APPLICATION [%s]',$class) );
             }
         }
         else{
@@ -374,29 +448,94 @@ abstract class CodersApp{
      * dentro de su espacio a cada llamada requerida desde el plugin activo.
      * 
      * @author Jaume Llopis <jaume@mnkcoder.com>
-     * @return \CodersApp
+     * @return \CodersApp|Boolean
      */
-    public static final function instance(){
+    public static final function instance( $app ){
         
-        return self::$_instance;
+        return strlen($app) && isset(self::$_instance[$app]) ? self::$_instance[ $app ] : FALSE;;
+    }
+    /**
+     * @return array
+     */
+    public static final function listInstances(){
+        return array_keys(self::$_instance);
+    }
+
+    /**
+     * @param string $app
+     * @return string
+     */
+    private static final function appKey( $app ){
+        
+        $key = explode('-', $app);
+        
+        $output = [];
+
+        switch( count($key)){
+            case 0:
+                return FALSE;
+            case 1:
+                return substr($key, 0,4);
+            case 2:
+                for( $k = 0 ; $k < count( $key ) ; $k++ ){
+                    $output[] = strtolower( substr($key[$k], 0, 2) );
+                }
+                break;
+            case 3:
+                for( $k = 0 ; $k < count( $key ) ; $k++ ){
+                    $output[] = strtolower( substr($key[$k],0,$k > 1 ? 2 : 1 ) );
+                }
+                break;
+            default:
+                for( $k = 0 ; $k < count( $key ) && $k < 4 ; $k++ ){
+                    $output[] = strtolower( substr($key[$k], 0, 1) );
+                }
+                break;
+        }
+
+        
+        return implode('', $output);
     }
     /**
      * Inicialización
      * @author Jaume Llopis <jaume@mnkcoder.com>
-     * @param string $application
+     * @param string $app
+     * @param string $key
      * @return \CodersApp|NULL
      */
-    public static function init( $application = '' ){
+    public static function init( $app = '' ){
+        
         if( !defined('CODERS_FRAMEWORK_BASE')){
+
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
         }
         
-        if( is_null(self::$_instance) && strlen($application)){
-            self::$_instance = strlen($application) ? self::__instance( $application ) : NULL;
+        if( strlen($app) && !isset( self::$_instance[$app] ) ){
+
+            $key = self::appKey($app);
+            //die($key);
+            
+            try{
+                
+                $instance = self::__instance( $app , $key );
+                
+                if( !is_null($instance)){
+
+                    self::$_instance[ $app ] = $instance;
+                    
+                    var_dump($instance);
+                    die;
+
+                    //define('CODERS_APP', strval( $instance ) );
+                }
+            }
+            catch (Exception $ex) {
+                die($ex->getMessage());
+            }
         }
         
-        return self::instance();
+        return strlen($app) ? self::instance( $app ) : null;
     }
 }
 

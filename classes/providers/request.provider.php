@@ -25,11 +25,11 @@ class Request{
     /**
      * @var TripManRequestProvider Evento Importado
      */
-    private static $_event = null;
+    //private static $_event = null;
     /**
      * @var string Token
      */
-    private static $_token = null;
+    //private static $_token = null;
     
     private $_module;
     
@@ -90,9 +90,9 @@ class Request{
         return $this->get($name,'');
     }
     /**
-     * @return \TripManRequestProvider
+     * @return \CODERS\Framework\Providers\Request
      */
-    public static final function importRequest(){
+    public static final function import(){
         
         if( is_null( self::$_event ) ){
 

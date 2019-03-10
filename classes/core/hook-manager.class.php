@@ -62,33 +62,29 @@ final class HookManager{
      */
     private final function hookTemplate(){
         
+        $app = \CodersApp::instance( $this->_app );
+            
         /* Handle template redirect according the template being queried. */
-        add_action( self::HOOK_TEMPLATE_REDIRECT, function(){
+        add_action( self::HOOK_TEMPLATE_REDIRECT, function() use( $app ){
 
             global $wp;
 
             $query = $wp->query_vars;
 
-            $instance = \CodersApp::instance();
-            
-            if( !is_null($instance)){
+            if( !is_null($app)){
 
-                $view = $instance->getOption('template', 'default');
+                $output = $app->getOption('template', 'default');
 
-                $endpoint = $instance->endPoint($view);
+                $ep = $app->endPoint($output);
 
-                if ( array_key_exists('template', $query) && $endpoint == $query['template']) {
+                if ( array_key_exists('template', $query) && $ep == $query['template']) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
 
-                    $wp_query->set('is_404', false);
+                    $wp_query->set('is_404', FALSE);
                     
-                    $instance->response( $view );
-
-                    //$instance->redirect_template( $view );
-
-                    ///add ending wordpress hooks?
+                    $app->response( $output );
                     
                     exit;
                 }
@@ -109,9 +105,9 @@ final class HookManager{
 
             global $wp, $wp_rewrite;
             
-            $instance = \CodersApp::instance();
+            $instance = \CodersApp::instance( $app );
             
-            if( !is_null($instance)){
+            if( $instance !== FALSE ){
                 
                 $view = $instance->getOption('template', 'default');
 
@@ -147,12 +143,17 @@ final class HookManager{
      */
     private final function hookCustom(){
         
-        $path = sprintf('%s/hooks.php', \CodersApp::applicationPath());
-        
-        if(file_exists($path)){
-            
-            require_once $path;
-            
+        $app = \CodersApp::instance($this->_app);
+
+        if( $app !== FALSE ){
+
+            $path = sprintf('%s/hooks.php', $app->appPath());
+
+            if(file_exists($path)){
+
+                require_once $path;
+
+            }
         }
         
         return $this;
