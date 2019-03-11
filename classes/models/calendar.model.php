@@ -4,7 +4,7 @@ defined('ABSPATH') or die;
 /**
  * Modelo para gestión de registros regidos por fechas o rangos de tiempo
  */
-abstract class TripManCalendarModel extends TripManComponent implements TripManIModel{
+abstract class CalendarModel extends \CODERS\Framework\Component implements \CODERS\Framework\IModel{
 
     const DAY_MONDAY = 1;
     const DAY_TUESDAY = 2;
@@ -57,7 +57,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
     /**
      * @param string $var
      * @param mixed $val
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function set($var, $val) {
         parent::set($var, $val);
@@ -463,7 +463,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
     /**
      * Prepara una selección anual de fechas
      * @param int $fromYear
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function setYearLayout( $fromYear, $toYear = 0 ){
 
@@ -478,7 +478,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
     /**
      * Prepara una selección de fechas por temporada
      * @param int $year
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function setSeasonLayout( $year ){
 
@@ -492,7 +492,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
      * Prepara una selección mensual de fechas
      * @param int $month
      * @param int $year
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function setMonthLayout( $month, $year = 0 ){
 
@@ -509,7 +509,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
      * @param string $dateFrom
      * @param string $dateTo
      * @param boolean $reverse
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function setRangeLayout( $dateFrom, $dateTo, $reverse = false ){
         $this->set('view','dates')
@@ -525,7 +525,7 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
      * @param string $dateTo 
      * @param boolean $cropFullWeek Incluye los días anteriores/posteriores para completar la selección de semanas
      * @param boolean $reverse Invierte el orden de selección
-     * @return \TripManCalendarModel
+     * @return \CODERS\Framework\Models\CalendarModel
      */
     public function setWeekLayout( $dateFrom, $dateTo, $cropFullWeek = false, $reverse = false ){
 
@@ -541,42 +541,33 @@ abstract class TripManCalendarModel extends TripManComponent implements TripManI
     }
     /**
      * Crea un calendario
-     * @param string $calendar
+     * @param string $app
+     * @param string $model
      * @param array $data
-     * @return \TripManCalendarModel | null
+     * @return \CODERS\Framework\Models\CalendarModel | null
      */
-    public static final function createCalendar( $calendar, array $data = null ){
-        if( TripManager::loaded() ){
-                    
-            $path = sprintf('%smodules/%s/models/%s.calendar.php',
-                MNK__TRIPMAN__DIR,
-                TripManager::instance()->getProfile(),
-                strtolower($calendar));
-            
-            $class = sprintf('TripMan%sCalendar',$calendar);
-            
-            
-            if(file_exists($path)){
+    public static final function create( $app , $model, array $data = array( ) ){
+
+        $instance = \CodersApp::instance($app);
+        
+        if( $instance !== FALSE ){
+
+            $path = sprintf('%s/models/%s.calendar.php', $instance->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sCalendar', \CodersApp::classify( $model ) );
+
+            if( file_exists( $path ) ){
 
                 require_once $path;
 
-                if( class_exists($class) && is_subclass_of($class, 'TripManCalendarModel',true)){
+                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
 
                     return new $class( $data );
                 }
-                else{
-                    TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                        TripManStringProvider::__( 'Calendario inv&aacute;lido' ),
-                        $class ) );
-                }
-            }
-            else{
-                TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                    TripManStringProvider::__( 'Calendario inv&aacute;lido' ),
-                    $path ) );
             }
         }
-        return null;
+
+        return FALSE;
     }
 }
 

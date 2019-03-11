@@ -16,48 +16,39 @@ class Request{
     //tipo de evento de contexto de la aplicación para cargar el módulo apropiado
     const EVENT_CONTEXT = '_context';
 
-    private $_appKey;
+    private $_ep;
     
-    private $_get = [];
-    private $_post = [];
+    private $_input = [];
+    //private $_post = [];
     private $_action = 'default';
     private $_context = 'main';
-    private $_userId = 0;
+    //private $_userId = 0;
     //private $_profile;
 
     /**
-     * @param string $appKey
+     * @param string $ep
      */
-    private function __construct( $appKey ) {
+    private function __construct( $ep , array $input = array( ) ) {
         
-        $this->_appKey = $appKey;
+        $this->_ep = $ep;
         
-        //ojo controlar donde se carga el id que puede ser que sea 0 antes de cargar la página
-        $this->_userId = get_current_user_id();
+        $this->_input = $input;
         
-        
-        $get = filter_input_array(INPUT_GET);
-
-        $post = filter_input_array(INPUT_POST);
-
-        if (!is_null($get) && count($get)) {
-            $this->_get = self::filterInput($get, $appKey);
-        }
-
-        if (!is_null($post) && count($post)) {
-            $this->_post = self::filterInput($post, $appKey );
-        }
+        $this->_context = $this->get(self::EVENT_CONTEXT,'main');
         
         $this->_action = $this->get(self::EVENT_COMMAND,'default');
-        $this->_context = $this->get(self::EVENT_CONTEXT,'main');
-        $this->remove(self::EVENT_COMMAND);
-        $this->remove(self::EVENT_CONTEXT);
+        
+        $this->remove(self::EVENT_COMMAND)->remove(self::EVENT_CONTEXT);
     }
     /**
      * @return string
      */
     public function __toString() {
-        return strtolower( sprintf('%s.%s',$this->_context,$this->_action) );
+        return strtolower( sprintf('%s.%s.%s.%s',
+                $this->_ep,
+                $this->module(),
+                $this->_context,
+                $this->_action) );
     }
     /**
      * Obtiene un valor de la Request
@@ -132,9 +123,9 @@ class Request{
      * @return \CODERS\Framework\Request
      */
     public final function add( $property, $value ){
-        if( !isset($this->_get[$property])){
+        if( !isset($this->_input[$property])){
             //fuerza siempre el valor textual
-            $this->_get[$property] = strval( $value );
+            $this->_input[$property] = strval( $value );
         }
         return $this;
     }
@@ -144,25 +135,17 @@ class Request{
      * @param mixed $default
      * @return mixed
      */
-    public final function get( $input, $default =null , $from = INPUT_REQUEST ){
+    public final function get( $input, $default = null , $from = INPUT_REQUEST ){
         
         switch( $from ){
-            case INPUT_POST:
-                return array_key_exists($input, $this->_post) ?
-                    $this->_post[$input] :
-                    $default;
-            case INPUT_GET:
-                return array_key_exists($input, $this->_get) ?
-                $this->_get[ $input ]:
-                $default;
+            case INPUT_SERVER:
+                $input = filter_input(INPUT_SERVER, $input );
+                return !is_null($input) ? $input : $default;
             case INPUT_COOKIE:
                 $input = filter_input( INPUT_COOKIE, self::prefixAttach($input) );
                 return !is_null($input) ? $input : $default;
-            case INPUT_REQUEST:
-                //POST
-                return array_key_exists($input, $this->_post) ? $this->_post[ $input ] :
-                //GET
-                    array_key_exists($input, $this->_get) ? $this->_get[ $input ]: $default;
+            case INPUT_REQUEST: default:
+                return array_key_exists($input, $this->_input) ? $this->_input[ $input ]: $default;
         }
     }
     /**
@@ -170,30 +153,18 @@ class Request{
      * @return \CODERS\Framework\Request
      */
     public final function remove( $key ){
-        if(array_key_exists( $key, $this->_get)){
-            unset( $this->_get[$key]);
-        }
-        if(array_key_exists( $key, $this->_post)){
-            unset( $this->_post[$key]);
+        if(array_key_exists( $key, $this->_input)){
+            unset( $this->_input[$key]);
         }
         return $this;
     }
     /**
      * @return \CODERS\Framework\Request
      */
-    public final function reset( $from = INPUT_REQUEST ){
-        switch( $from ){
-            case INPUT_REQUEST:
-                $this->_get = array();
-                $this->_post = array();
-                break;
-            case INPUT_POST:
-                $this->_post = array();
-                break;
-            case INPUT_GET:
-                $this->_get = array();
-                break;
-        }
+    public final function reset( ){
+        
+        $this->_input = array();
+        
         return $this;
     }
 
@@ -217,7 +188,7 @@ class Request{
             }
 
             return setcookie(
-                    self::attachPrefix($cookie,$this->_appKey), $value,
+                    self::attachPrefix($cookie,$this->_ep), $value,
                     time() + ( $time  * 60) );
         }
 
@@ -268,7 +239,11 @@ class Request{
     /**
      * @return int WP User ID
      */
-    public final function UID(){ return $this->_userId; }
+    public final function UID(){ return get_current_user_id(); }
+    /**
+     * @return string
+     */
+    public final function SID(){ return wp_get_session_token(); }
     /**
      * @return string|NULL Dirección remota del cliente
      */
@@ -279,9 +254,7 @@ class Request{
     /**
      * @return array Devuelve todos los datos adjuntos en el evento
      */
-    public final function data(){
-        return array_merge( $this->_get,$this->_post);
-    }
+    public final function data(){ return $this->_input; }
     /**
      * @return string Event Type
      */
@@ -293,9 +266,18 @@ class Request{
     /**
      * @return string
      */
-    public final function application(){
-        return $this->_appKey;
+    public final function endPoint(){
+        return $this->_ep;
     }
+    /**
+     * @return boolean
+     */
+    public final function isAdmin(){ return is_admin(); }
+    /**
+     * @return string
+     */
+    public final function module(){ return $this->isAdmin() ? 'admin' : 'public'; }
+
     /**
      * Redirige una request para delegar a un nuevo contexto/acción de controlador
      * @param string $action ACCION o CONTEXTO.ACCION del evento
@@ -303,6 +285,8 @@ class Request{
      * @return \CODERS\Framework\Request
      */
     public final function redirect( $action = 'default', array $data = null ){
+        
+        $this->reset();
         
         $composed = explode('.',  strtolower( $action ) );
         
@@ -315,10 +299,34 @@ class Request{
         }
         
         if( !is_null($data)){
-            $this->reset();
-            $this->_get = $data;
+            $this->_input = self::filterInput( $data , $this->_ep );
         }
         
         return $this;
     }
+    /**
+     * @param string $ep
+     * @param array $input
+     * @return \CODERS\Framework\Request
+     */
+    public static final function create( $ep , array $input = array( ) ){
+        
+        return new Request( $ep , self::filterInput($input, $ep) );
+    }
+    /**
+     * @param string $ep
+     * @return \CODERS\Framework\Request
+     */
+    public static final function import( $ep ){
+        
+        $get = filter_input_array(INPUT_GET);
+        $post = filter_input_array(INPUT_GET);
+
+        if(is_null($get)){ $get = array(); }
+        if(is_null($post)){ $post = array(); }
+
+        return new Request( $ep , array_merge($get,$post) );
+    }
 }
+
+

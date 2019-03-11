@@ -1,11 +1,14 @@
-<?php defined('ABSPATH') or die;
+<?php namespace CODERS\Framework\Models;
+
+defined('ABSPATH') or die;
+
 /**
  * Modelo de formulario para procesar registros de entrada de datos
  * 
  * Incluye funciones de validación de datos del form e importación directa desde los eventos generados
  * por la entrada de inputs GET y POST
  */
-abstract class TripManFormModel extends TripManDictionary implements TripManIModel{
+abstract class FormModel extends \CODERS\Framework\Dictionary implements \CODERS\Framework\IModel{
     //control de spam honeypot
     const FIELD_TYPE_ANTISPAM = 'antispam';
     //agregar campo de recuento de totales del precio del form
@@ -46,7 +49,7 @@ abstract class TripManFormModel extends TripManDictionary implements TripManIMod
      * @param string $name
      * @param string $type
      * @param array $properties
-     * @return \TripManFormModel Instancia para chaining
+     * @return \CODERS\Framework\Models\FormModel Instancia para chaining
      */
     protected function addField($name, $type = self::FIELD_TYPE_TEXT, array $properties = null) {
         
@@ -245,7 +248,7 @@ abstract class TripManFormModel extends TripManDictionary implements TripManIMod
      * 
      * @param string $field
      * @param mixed $value
-     * @return \TripManFormModel Chaining
+     * @return \CODERS\Framework\Models\FormModel Chaining
      */
     public function setValue($field, $value) {
         
@@ -297,7 +300,7 @@ abstract class TripManFormModel extends TripManDictionary implements TripManIMod
      * @param string $field
      * @param string $message
      * @param mixed $args Parámetro o parámetros a intercalar en el texto (array o cadena)
-     * @return \TripManFormModel
+     * @return \CODERS\Framework\Models\FormModel
      */
     public function setError( $field, $message, $args = null ){
         $this->setMeta(
@@ -329,48 +332,39 @@ abstract class TripManFormModel extends TripManDictionary implements TripManIMod
     }
     /**
      * Crea un form de datos
-     * @param string $form
-     * @return \TripManFormModel
+     * @param string $app
+     * @param string $model
+     * @param array $data
+     * @return \CODERS\Framework\Models\FormModel|boolean
      */
-    public static final function createForm( $form, array $formData = null ){
+    public static final function create( $app , $model , array $data = array( ) ){
         
-        if( TripManager::loaded() ){
-                    
-            $path = sprintf('%smodules/%s/models/%s.form.php',
-                MNK__TRIPMAN__DIR,
-                TripManager::instance()->getProfile(),
-                strtolower($form));
-            
-            $class = sprintf('TripMan%sForm',$form);
-            
-            
-            if(file_exists($path)){
+        $instance = \CodersApp::instance($app);
+        
+        if( $instance !== FALSE ){
+
+            $path = sprintf('%s/models/%s.form.php', $instance->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sForm', \CodersApp::classify( $model ) );
+
+            if( file_exists( $path ) ){
 
                 require_once $path;
 
-                if( class_exists($class) && is_subclass_of($class, 'TripManFormModel',true)){
+                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
 
-                    return new $class( $formData );
+                    return new $class( $data );
                 }
-                else{
-                    TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                        TripManStringProvider::__( 'Form inv&aacute;lido' ),
-                        $class ) );
-                }
-            }
-            else{
-                    TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                        TripManStringProvider::__( 'Form inv&aacute;lido' ),
-                        $path ) );
             }
         }
-        return null;
+
+        return FALSE;
     }
     /**
      * Importa directamente los datos sobre el modelo del formulario
      * @param array $formData
      * @param boolean $update Marca los datos importados como valores actualizados
-     * @return \TripManFormModel
+     * @return \CODERS\Framework\Models\FormModel
      */
     public function importData( array $formData, $update = false ){
         foreach( $this->listFields() as $field ){
@@ -501,7 +495,7 @@ abstract class TripManFormModel extends TripManDictionary implements TripManIMod
     }
     /**
      * Restablece la marca de actualizado en los campos que han sido recientemente importados
-     * @return \TripManFormModel
+     * @return \CODERS\Framework\Models\FormModel
      */
     /*public final function commitUpdated(){
         foreach($this->listFields() as $field ){

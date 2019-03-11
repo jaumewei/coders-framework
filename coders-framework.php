@@ -29,7 +29,7 @@ abstract class CodersApp{
     /**
      * @var string
      */
-    private $_key = '';
+    private $_EPK = '';
     /**
      * @var \CODERS\Framework\HookManager
      */
@@ -73,7 +73,7 @@ abstract class CodersApp{
      */
     protected function __construct( $key = '' ) {
         //
-        $this->_key = strlen($key) > 3 ? $key : self::appKey(strval($this));
+        $this->_EPK = strlen($key) > 3 ? $key : self::appKey(strval($this));
         //
         $this->__initializeFramework()->__hook()->__init();
     }
@@ -163,26 +163,59 @@ abstract class CodersApp{
      */
     abstract protected function __init();
     /**
-     * @param string $view
-     * @param boolean $getLocale
+     * Defines a hierarchy of end-point translations, customizable from the child application classes
+     * 
+     * end-point => ( lang_id_1 => ep1 , lang_id_2 => ep2 , lang_id_N => epN )
+     * 
      * @return string
      */
-    public final function endPoint( $view , $getLocale = FALSE ){
+    protected function endPointLocale( ){
         
-        if( $getLocale ){
+        //default entry point is the app name
+        $default = strval($this);
 
-            return $view;
+        $translations = array( );
+        
+        $locale = wp_get_installed_translations('core');
+        
+        if( isset( $locale['default']) && is_array($locale['default'])){
+            foreach( array_keys($locale['default']) as $lang ){
+                $translations[ $lang ] =  $default;
+            }
+        }
+        
+        return array( $default => $translations );
+    }
+    /**
+     * @param string $view (default)
+     * @param bool $translate 
+     * @return string
+     */
+    public final function endPoint( $view = 'default' , $translate = FALSE ){
+        
+        if( $view === 'default' ){
+
+            $view = strval($this);
         }
 
-        $locale = get_locale();
+        if( $translate ){
+            
+            //choose the selected language
+            $lang = get_locale();
 
-        $translations = array(
-            'es-ES' => 'intranet',
-            'en-GB' => 'network',
-            'en-US' => 'network',
-        );
+            //list available endpoints
+            $eplist = $this->endPointLocale();
 
-        return array_key_exists($locale, $translations) ? $translations[$locale] : $view;
+            if( array_key_exists( $view , $eplist ) ){
+
+                return array_key_exists( $lang, $eplist[ $view ] ) ? $eplist[$view][$lang] : $view;
+            }
+            else{
+                //register error in log
+            }
+        }
+        
+        return $view;
     }
     /**
      * Esto irá mejor en el renderizador del sistema
@@ -233,7 +266,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Request')){
             
-            return new \CODERS\Framework\Request( strval($this) );
+            return \CODERS\Framework\Request::import( strval($this) );
         }
         
         return FALSE;
@@ -244,25 +277,27 @@ abstract class CodersApp{
     public function db(){
         
         if(class_exists('\CODERS\Framework\DB')){
-            return new \CODERS\Framework\DB( $this->_key );
+            return new \CODERS\Framework\DB( $this->_EPK );
         }
         
         return FALSE;
     }
     /**
      * 
-     * @return \CodersApp
      */
     public function response( ){
 
         if( class_exists('CODERS\Framework\Controller') ){
 
             $request = $this->request();
-
+            
             if( $request !== FALSE ){
                 try{
-                    $context = \CODERS\Framework\Controller::create( $request->context( ) );
-
+                    $context = \CODERS\Framework\Controller::create(
+                            strval($this),
+                            $request->context( ),
+                            is_admin());
+                    
                     if( !is_null($context)){
 
                         if( !$context->__execute( $request ) ){
@@ -277,8 +312,72 @@ abstract class CodersApp{
             }
         }
         
-        return $this;
+        //return $this;
     }
+    /**
+     * @param string $controller
+     * @param boolean $admin
+     * @return \CODERS\Framework\Controller | boolean
+     */
+    public function createController( $controller , $admin = FALSE ){
+        return class_exists('\CODERS\Framework\Controller') ?
+                \CODERS\Framework\Controller::create( strval($this), $controller, $admin ) :
+                FALSE;
+    }
+    /**
+     * @param string $model
+     * @param array $data
+     * @return \CODERS\Framework\Models\ListModel|boolean
+     */
+    public function createList( $model , array $data = array( ) ){
+        
+        if(class_exists('\CODERS\Framework\Models\ListModel')){
+            
+            return \CODERS\Framework\Models\ListModel::create( strval($this), $model, $data);
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @param string $model
+     * @param array $data
+     * @return \CODERS\Framework\Models\ListModel|boolean
+     */
+    public function createCalendar( $model , array $data = array( ) ){
+        
+        if(class_exists('\CODERS\Framework\Models\CalendarModel')){
+            
+            return \CODERS\Framework\Models\CalendarModel::create( strval($this), $model, $data);
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @param string $model
+     * @param array $data
+     * @return \CODERS\Framework\Models\ListModel|boolean
+     */
+    public function createForm( $model , array $data = array( ) ){
+        
+        if(class_exists('\CODERS\Framework\Models\FormModel')){
+            
+            return \CODERS\Framework\Models\FormModel::create( strval($this), $model, $data);
+        }
+        
+        return FALSE;
+    }
+
+    /**
+     * 
+     * @param string $model
+     */
+    public function createModel( $model ){
+        
+    }
+    /**
+     * @return string
+     */
+    public final function endPointKey(){ return $this->_EPK; }
     /**
      * @param string $option
      * @param mixed $default
@@ -514,7 +613,6 @@ abstract class CodersApp{
         if( strlen($app) && !isset( self::$_instance[$app] ) ){
 
             $key = self::appKey($app);
-            //die($key);
             
             try{
                 
@@ -523,11 +621,6 @@ abstract class CodersApp{
                 if( !is_null($instance)){
 
                     self::$_instance[ $app ] = $instance;
-                    
-                    var_dump($instance);
-                    die;
-
-                    //define('CODERS_APP', strval( $instance ) );
                 }
             }
             catch (Exception $ex) {

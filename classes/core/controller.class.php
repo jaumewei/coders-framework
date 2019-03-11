@@ -44,7 +44,7 @@ abstract class Controller extends Component{
      * @param \CODERS\Framework\Request $request
      * @return boolean
      */
-    protected function error_action( Providers\Request $request ){
+    protected function error_action( Request $request ){
         
         var_dump($request);
         
@@ -53,59 +53,44 @@ abstract class Controller extends Component{
     /**
      * Acción por defecto del controlador
      */
-    abstract protected function default_action( Providers\Request $request );
+    abstract protected function default_action( Request $request );
     /**
      * Carga un controlador. Retorna un controlador de error si no se ha encontrado el deseado
-     * @param string $context Controlador a cargar
-     * @return \CODERS\Framework\Controller
+     * @param string $app Controlador a cargar
+     * @param string $context 
+     * @param boolean $admin
+     * @return \CODERS\Framework\Controller | boolean
      */
-    public static final function create( $context ){
+    public static final function create( $app , $context , $admin = FALSE ){
         
-        $module = '';
+        $instance = \CodersApp::instance($app);
         
-        $base_path = sprintf('%scomponents/controllers/%s.controller.php',
-                MNK__TRIPMAN__DIR,  strtolower( $context ) );
-        
-        $app_path = !is_null($module) ?
-                sprintf('%smodules/%s/controllers/%s.controller.php',
-                MNK__TRIPMAN__DIR,  $module,  strtolower( $context ) ) :
-                null;
-        
-        $class = sprintf('TripMan%sController',$context);
-        
-        if( !is_null($module)){
+        if( $instance !== FALSE ){
+
+            $path = sprintf('%s/%s/controllers/%s.controller.php', $instance->appPath(),
+                    //select administrator or public module
+                    $admin ? 'admin' : 'public' , $context);
             
-            if( file_exists($app_path) ){
+            $class = sprintf('\CODERS\Framework\Controllers\%sController',$context);
+            
+            if(file_exists($path)){
                 
-                require_once $app_path;
+                require_once $path;
                 
-            }
-            elseif(file_exists($base_path)){
-                require_once $base_path;
+                if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE ) ){
+                    return new $class( );
+                }
             }
         }
-        elseif(file_exists($base_path)){
-            
-            require_once $base_path;
-        }
         
-        if(class_exists($class) && is_subclass_of($class, 'TripManController', true ) ){
-            
-            return new $class();
-        }
-        
-        $error_path = sprintf('%s/components/controllers/error.controller.php', MNK__TRIPMAN__DIR );
-
-        require_once $error_path;
-
-        return new TripManErrorController();
+        return FALSE;
     }
     /**
      * Redirige un controlador a otro (mucho ojo a las redirecciones, máximo 3)
      * @param \\CODERS\Framework\Request $request
      * @return \TripManController
      */
-    public function redirect( Providers\Request  $request ){
+    public function redirect( Request  $request ){
         if( $this->_redirections < self::MAX_REDIRECTIONS ){
             return self::loadController($request->getContext());
         }

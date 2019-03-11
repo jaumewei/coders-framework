@@ -1,8 +1,10 @@
-<?php defined('ABSPATH') or die;
+<?php namespace CODERS\Framework\Models;
+
+defined('ABSPATH') or die;
 /**
  * Modelo de listado de registros para gestionar colecciones
  */
-abstract class TripManListModel extends TripManDictionary implements TripManIModel{
+abstract class ListModel extends \CODERS\Framework\Dictionary implements \CODERS\Framework\IModel{
 
     private $_rows = array();
     
@@ -221,41 +223,31 @@ abstract class TripManListModel extends TripManDictionary implements TripManIMod
     abstract public function paginate( $page = 1 , $order = null, $filters = null );
     /**
      * Carga una lista para gestionar colecciones de registros
-     * @param string $list
-     * @return \TripManListModel | NULL
+     * @param string $app
+     * @param string $model
+     * @return \CODERS\Framework\Models\ListModel | NULL
      */
-    public static final function createList( $list ){
+    public static final function create( $app , $model , array $data = array( ) ){
         
-        if( TripManager::loaded() ){
-                    
-            $path = sprintf('%smodules/%s/models/%s.list.php',
-                MNK__TRIPMAN__DIR,
-                TripManager::instance()->getProfile(),
-                strtolower($list));
-            
-            $class = sprintf('TripMan%sList',$list);
-            
-            
-            if(file_exists($path)){
+        $instance = \CodersApp::instance($app);
+        
+        if( $instance !== FALSE ){
+
+            $path = sprintf('%s/models/%s.list.php', $instance->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sList', \CodersApp::classify( $model ) );
+
+            if( file_exists( $path ) ){
 
                 require_once $path;
 
-                if( class_exists($class) && is_subclass_of($class, 'TripManListModel',true)){
+                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
 
-                    return new $class( );
+                    return new $class( $data );
                 }
-                else{
-                    TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                        TripManStringProvider::__( 'Lista inv&aacute;lida' ),
-                        $class ) );
-                }
-            }
-            else{
-                TripManLogProvider::error(sprintf('%s <b>%s</b>',
-                    TripManStringProvider::__( 'Lista inv&aacute;lida' ),
-                    $path ) );
             }
         }
-        return null;
+
+        return FALSE;
     }
 }

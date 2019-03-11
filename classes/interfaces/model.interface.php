@@ -7,6 +7,10 @@ defined('ABSPATH') or die;
  */
 interface IModel{
     /**
+     * 
+     */
+    function __toString();
+    /**
      * Descriptor del getter genérico de los modelos
      */
     function get( $var, $default = null );

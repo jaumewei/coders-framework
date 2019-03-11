@@ -37,55 +37,68 @@ final class HookManager{
     
     
     const HOOK_TEMPLATE_REDIRECT = 'template_redirect';
-  
-    private $_app;
+    /**
+     * app Endpoint
+     * @var string
+     */
+    private $_EP;
+    /**
+     * App endpoint key
+     * @var string
+     */
+    private $_EPK;
 
     /**
      * 
      */
     public final function __construct( \CodersApp $app ) {
         
-        $this->_app = strval($app);
+        $this->_EP = strval($app);
+        
+        $this->_EPK = $app->endPointKey();
         
         //administración
         $this->hookAdmin()
                 //ruta publica permalink/GET
                 ->hookEndPoint()
                 //redirección publica
-                ->hookTemplate()
+                ->hookResponse()
                 //personalizaciones
                 ->hookCustom();
     }
     /**
-     * Redirect Template
+     * Hooks the application endpoint response, bypassing the requested route through
+     * the framework control
      * @return \CODERS\Framework\HookManager
      */
-    private final function hookTemplate(){
+    private final function hookResponse(){
         
-        $app = \CodersApp::instance( $this->_app );
+        $app = $this->_EP;
             
         /* Handle template redirect according the template being queried. */
         add_action( self::HOOK_TEMPLATE_REDIRECT, function() use( $app ){
 
             global $wp;
+            
+            $instance = \CodersApp::instance( $app );
 
             $query = $wp->query_vars;
-
-            if( !is_null($app)){
-
-                $output = $app->getOption('template', 'default');
-
-                $ep = $app->endPoint($output);
-
-                if ( array_key_exists('template', $query) && $ep == $query['template']) {
+            
+            if( $instance !== FALSE ){
+                //capture the output to dispatch in the response
+                $endpoint = $instance->endPoint( $instance->getOption('endpoint', 'default') );
+                //use this to validate the current locale endpoint translation
+                $endpointLocale = $instance->endPoint( $endpoint , TRUE );
+                
+                if ( array_key_exists('template', $query) && $endpointLocale === $query['template']) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
-
+                    //blow up 404 errors here
                     $wp_query->set('is_404', FALSE);
-                    
-                    $app->response( $output );
-                    
+                    //and execute the response
+                    $instance->response( $endpoint );
+                    //then go
                     exit;
                 }
             }
@@ -94,12 +107,12 @@ final class HookManager{
         return $this;
     }
     /**
-     * Redirect End Point
+     * Redirect End Point URL
      * @return \CODERS\Framework\HookManager
      */
     private final function hookEndPoint(){
 
-        $app = $this->_app;
+        $app = $this->_EP;
         
         add_action( self::HOOK_INIT, function() use($app){
 
@@ -108,11 +121,10 @@ final class HookManager{
             $instance = \CodersApp::instance( $app );
             
             if( $instance !== FALSE ){
+                //import the regiestered locale's endpoint from the settinsg
+                $endpoint = $instance->endPoint($instance->getOption( 'endpoint' , 'default') , TRUE );
                 
-                $view = $instance->getOption('template', 'default');
-
-                $endpoint = $instance->endPoint($view);
-
+                //now let wordpress do it's stuff with the query router
                 $wp->add_query_var( 'template' );   
 
                 add_rewrite_endpoint( $endpoint , EP_ROOT );
@@ -121,7 +133,7 @@ final class HookManager{
                         sprintf('^/%s/?$', $endpoint), 
                         'index.php?template=' . $endpoint,
                         'bottom' );
-
+                //and rewrite
                 $wp_rewrite->flush_rules();
             }
         } );
@@ -143,7 +155,7 @@ final class HookManager{
      */
     private final function hookCustom(){
         
-        $app = \CodersApp::instance($this->_app);
+        $app = \CodersApp::instance($this->_EP);
 
         if( $app !== FALSE ){
 
