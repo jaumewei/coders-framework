@@ -22,13 +22,14 @@ class DB{
      * @global wpdb $wpdb
      * @param string $appKey
      */
-    public function __construct( $appKey ) {
-        
-        $this->_appKey = $appKey;
+    public function __construct( \CodersApp $app ) {
         
         global $wpdb;
         
         $this->_wpdb = $wpdb;
+
+        $this->_appKey = $app->endPointKey();
+        
     }
     /**
      * @return \wpdb

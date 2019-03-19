@@ -17,6 +17,7 @@ class Request{
     const EVENT_CONTEXT = '_context';
 
     private $_ep;
+    private $_epk;
     
     private $_input = [];
     //private $_post = [];
@@ -26,11 +27,13 @@ class Request{
     //private $_profile;
 
     /**
-     * @param string $ep
+     * @param \CodersApp $ep
      */
-    private function __construct( $ep , array $input = array( ) ) {
+    private function __construct( \CodersApp $app , array $input = array( ) ) {
         
-        $this->_ep = $ep;
+        $this->_ep = $app->endPointName();
+        
+        $this->_epk = $app->endPointKey();
         
         $this->_input = $input;
         
@@ -45,7 +48,7 @@ class Request{
      */
     public function __toString() {
         return strtolower( sprintf('%s.%s.%s.%s',
-                $this->_ep,
+                $this->_epk,
                 $this->module(),
                 $this->_context,
                 $this->_action) );
@@ -299,33 +302,38 @@ class Request{
         }
         
         if( !is_null($data)){
-            $this->_input = self::filterInput( $data , $this->_ep );
+            $this->_input = self::filterInput( $data , $this->_epk );
         }
         
         return $this;
     }
     /**
-     * @param string $ep
+     * @param \CodersApp $app
      * @param array $input
+     * @param boolean $filter
      * @return \CODERS\Framework\Request
      */
-    public static final function create( $ep , array $input = array( ) ){
+    public static final function create( $app , array $input = array( ) , $filter = FALSE ){
         
-        return new Request( $ep , self::filterInput($input, $ep) );
+        return new Request( $app , $filter ?
+                self::filterInput($input, $app->endPointKey()) :
+                $input );
     }
     /**
-     * @param string $ep
+     * @param \CodersApp $app
      * @return \CODERS\Framework\Request
      */
-    public static final function import( $ep ){
+    public static final function import( $app ){
         
         $get = filter_input_array(INPUT_GET);
+        
         $post = filter_input_array(INPUT_GET);
 
         if(is_null($get)){ $get = array(); }
+        
         if(is_null($post)){ $post = array(); }
 
-        return new Request( $ep , array_merge($get,$post) );
+        return new Request( $app , self::filterInput(array_merge($get,$post), $app->endPointKey() ) );
     }
 }
 

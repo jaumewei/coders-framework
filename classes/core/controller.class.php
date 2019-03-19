@@ -13,6 +13,33 @@ abstract class Controller extends Component{
      * @var int
      */
     private $_redirections = 0;
+    
+    private $_appName;
+    
+    /**
+     * @param \CodersApp $app
+     */
+    protected function __construct( \CodersApp $app ) {
+        
+        $this->_appName = $app->endPointName();
+
+    }
+    /**
+     * @param string $view
+     * @return \CODERS\Framework\Views\Renderer | boolean
+     */
+    protected function renderer( $view = 'main' ){
+        
+        $app = \CodersApp::instance($this->_appName);
+        
+        if( $app !== FALSE && class_exists('\CODERS\Framework\Views\Renderer' ) ){
+            
+            return \CODERS\Framework\Views\Renderer::create($app, $view , is_admin( ) );
+        }
+        
+        return FALSE;
+    }
+    
     /**
      * Ejecuta el controlador
      * @param \CODERS\Framework\Request $request
@@ -78,7 +105,7 @@ abstract class Controller extends Component{
                 require_once $path;
                 
                 if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE ) ){
-                    return new $class( );
+                    return new $class( $instance );
                 }
             }
         }

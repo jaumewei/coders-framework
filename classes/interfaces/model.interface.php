@@ -14,4 +14,9 @@ interface IModel{
      * Descriptor del getter genérico de los modelos
      */
     function get( $var, $default = null );
+    /**
+     * @param string $var
+     * @return boolean
+     */
+    function has( $var );
 }

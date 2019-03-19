@@ -21,19 +21,27 @@ abstract class CodersApp{
     const TYPE_MODELS = 400;
     const TYPE_EXTENSIONS = 500;
     
+    const DEFAULT_EP = 'default';
+    
     /**
      * @author Jaume Llopis <jaume@mnkcoder.com>
      * @var \CodersApp[] Singleton of Instances
      */
     private static $_instance = [];
     /**
-     * @var string
-     */
-    private $_EPK = '';
-    /**
      * @var \CODERS\Framework\HookManager
      */
     private $_hookMgr = null;
+    /**
+     * End point key
+     * @var string
+     */
+    private $_EPK;
+    /**
+     * End point name
+     * @var string
+     */
+    private $_EPN;
     /**
      * Componentes cargados
      * @var array
@@ -52,7 +60,7 @@ abstract class CodersApp{
             'dictionary',
             'request',      //inputs
             'controller',
-            'renderer',
+            'html','renderer',
             'service',
         ],
         self::TYPE_PROVIDERS => [
@@ -72,8 +80,10 @@ abstract class CodersApp{
      * 
      */
     protected function __construct( $key = '' ) {
-        //
-        $this->_EPK = strlen($key) > 3 ? $key : self::appKey(strval($this));
+        //end point name
+        $this->_EPN = strval($this);
+        //end point key
+        $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
         //
         $this->__initializeFramework()->__hook()->__init();
     }
@@ -106,25 +116,8 @@ abstract class CodersApp{
 
         /*return sprintf('%s/../coders-%s/',
                 plugin_dir_path(__FILE__) ,
-                self::nominalize( self::appName() ) );*/
+                self::nominalize( self::endPointName() ) );*/
     }
-    /**
-     * @return string
-     */
-    public final function appName(){
-        return strval($this);
-        //$application = strval($this);
-        //$application = self::nominalize( get_called_class() );
-        //return $application;
-        /*if(substr($application, 0,6) === 'Coders'){
-            $to = strrpos($application, 'App');
-            if( $to > 6 ){
-                return substr($application, 6, $to - 6 ) ;
-            }
-        }
-        return '';*/
-    }
- 
     /**
      * Ruta URL de contenido de la aplicación
      * @return string
@@ -132,7 +125,7 @@ abstract class CodersApp{
     public final function appURL( ){
         
         return preg_replace( '/coders-framework/',
-                $this->appName(),
+                $this->endPointName(),
                 plugin_dir_url(__FILE__) );
     }
     /**
@@ -172,14 +165,18 @@ abstract class CodersApp{
     protected function endPointLocale( ){
         
         //default entry point is the app name
-        $default = strval($this);
+        $default = $this->endPointName();
 
+        return array( $default => array( ) );
+        
+        //no need to list all languages here, just output a default end point for each
+        
         $translations = array( );
         
         $locale = wp_get_installed_translations('core');
         
-        if( isset( $locale['default']) && is_array($locale['default'])){
-            foreach( array_keys($locale['default']) as $lang ){
+        if( isset( $locale[self::DEFAULT_EP]) && is_array($locale[self::DEFAULT_EP])){
+            foreach( array_keys($locale[self::DEFAULT_EP]) as $lang ){
                 $translations[ $lang ] =  $default;
             }
         }
@@ -187,41 +184,47 @@ abstract class CodersApp{
         return array( $default => $translations );
     }
     /**
-     * @param string $view (default)
+     * @param string $endpoint (default)
      * @param bool $translate 
      * @return string
      */
-    public final function endPoint( $view = 'default' , $translate = FALSE ){
+    public final function endPoint( $endpoint = self::DEFAULT_EP , $translate = FALSE ){
         
-        if( $view === 'default' ){
-
-            $view = strval($this);
+        if( $endpoint === self::DEFAULT_EP ){
+            //override default key to the app-name endpoint
+            $endpoint = $this->endPointName();
         }
 
         if( $translate ){
             
             //choose the selected language
             $lang = get_locale();
-
+            
             //list available endpoints
             $eplist = $this->endPointLocale();
+            
+            //var_dump($eplist);
+            //var_dump($lang);
+            //die($endpoint);
 
-            if( array_key_exists( $view , $eplist ) ){
+            if( array_key_exists( $endpoint , $eplist ) ){
 
-                return array_key_exists( $lang, $eplist[ $view ] ) ? $eplist[$view][$lang] : $view;
+                return array_key_exists( $lang, $eplist[ $endpoint ] ) ?
+                        $eplist[$endpoint][$lang] :
+                        $endpoint;
             }
             else{
                 //register error in log
             }
         }
         
-        return $view;
+        return $endpoint;
     }
     /**
      * Esto irá mejor en el renderizador del sistema
      * @param string $view
      */
-    public static final function redirect_template( $view = 'default' ){
+    public static final function redirect_template( $view = self::DEFAULT_EP ){
         
         $path = sprintf('%s/html/%s.template.php',__DIR__,$view);
 
@@ -266,7 +269,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Request')){
             
-            return \CODERS\Framework\Request::import( strval($this) );
+            return \CODERS\Framework\Request::import( $this );
         }
         
         return FALSE;
@@ -277,7 +280,7 @@ abstract class CodersApp{
     public function db(){
         
         if(class_exists('\CODERS\Framework\DB')){
-            return new \CODERS\Framework\DB( $this->_EPK );
+            return new \CODERS\Framework\DB( $this );
         }
         
         return FALSE;
@@ -294,7 +297,7 @@ abstract class CodersApp{
             if( $request !== FALSE ){
                 try{
                     $context = \CODERS\Framework\Controller::create(
-                            strval($this),
+                            $this->endPointName(),
                             $request->context( ),
                             is_admin());
                     
@@ -321,7 +324,7 @@ abstract class CodersApp{
      */
     public function createController( $controller , $admin = FALSE ){
         return class_exists('\CODERS\Framework\Controller') ?
-                \CODERS\Framework\Controller::create( strval($this), $controller, $admin ) :
+                \CODERS\Framework\Controller::create( $this->endPointName(), $controller, $admin ) :
                 FALSE;
     }
     /**
@@ -333,7 +336,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\ListModel')){
             
-            return \CODERS\Framework\Models\ListModel::create( strval($this), $model, $data);
+            return \CODERS\Framework\Models\ListModel::create( $this->endPointName(), $model, $data);
         }
         
         return FALSE;
@@ -347,7 +350,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\CalendarModel')){
             
-            return \CODERS\Framework\Models\CalendarModel::create( strval($this), $model, $data);
+            return \CODERS\Framework\Models\CalendarModel::create( $this->endPointName(), $model, $data);
         }
         
         return FALSE;
@@ -361,7 +364,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\FormModel')){
             
-            return \CODERS\Framework\Models\FormModel::create( strval($this), $model, $data);
+            return \CODERS\Framework\Models\FormModel::create( $this->endPointName(), $model, $data);
         }
         
         return FALSE;
@@ -379,15 +382,31 @@ abstract class CodersApp{
      */
     public final function endPointKey(){ return $this->_EPK; }
     /**
+     * @return string
+     */
+    public final function endPointName(){
+        
+        return $this->_EPN;
+        //return strval($this);
+        //$application = strval($this);
+        //$application = self::nominalize( get_called_class() );
+        //return $application;
+        /*if(substr($application, 0,6) === 'Coders'){
+            $to = strrpos($application, 'App');
+            if( $to > 6 ){
+                return substr($application, 6, $to - 6 ) ;
+            }
+        }
+        return '';*/
+    }
+    /**
      * @param string $option
      * @param mixed $default
      * @return mixed
      */
     public final function getOption( $option ,  $default = null ){
         
-        $option_key = sprintf('%s_%s', strval($this),$option);
-        
-        return get_option($option_key, $default);
+        return get_option(sprintf('%s_%s', $this->_EPK,$option), $default);
     }
     /**
      * @param string $option
@@ -397,9 +416,10 @@ abstract class CodersApp{
      */
     protected final function setOption( $option , $value ,$autoload = FALSE ){
         
-        $option_key = sprintf('%s_%s', strval($this),$option);
-        
-        return update_option($option_key, $value, $autoload );
+        return update_option(
+                sprintf('%s_%s', $this->_EPK,$option),
+                $value,
+                $autoload );
     }
     /**
      * Registra un componente del framework

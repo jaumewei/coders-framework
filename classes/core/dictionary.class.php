@@ -9,29 +9,28 @@ defined('ABSPATH') or die;
  */
 abstract class Dictionary {
     
-    const FIELD_DEFAULT_LENGTH = 25;
+    const DEFAULT_LENGTH = 25;
     
-    const FIELD_TYPE_ID = 'id';
-    const FIELD_TYPE_BOOL = 'boolean';
-    const FIELD_TYPE_EMAIL = 'email';
-    const FIELD_TYPE_TELEPHONE = 'tel';
-    const FIELD_TYPE_TEXT = 'text';
-    const FIELD_TYPE_TEXTAREA = 'textarea';
-    const FIELD_TYPE_LIST = 'list';
-    const FIELD_TYPE_DROPDOWN = 'dropdown';
-    const FIELD_TYPE_OPTION = 'option';
-    const FIELD_TYPE_DATE = 'date';
-    const FIELD_TYPE_DATETIME = 'date-time';
-    const FIELD_TYPE_NUMBER = 'number';
-    const FIELD_TYPE_PRICE = 'price';
-    const FIELD_TYPE_FLOAT = 'float';
-    const FIELD_TYPE_CHECKBOX = 'checkbox';
-    const FIELD_TYPE_HIDDEN = 'hidden';
-    const FIELD_TYPE_USER = 'user';
-    const FIELD_TYPE_PASSWORD = 'password';
+    const TYPE_ID = 'id';
+    const TYPE_EMAIL = 'email';
+    const TYPE_TELEPHONE = 'tel';
+    const TYPE_TEXT = 'text';
+    const TYPE_TEXTAREA = 'textarea';
+    const TYPE_LIST = 'list';
+    const TYPE_DROPDOWN = 'dropdown';
+    const TYPE_OPTION = 'option';
+    const TYPE_DATE = 'date';
+    const TYPE_DATETIME = 'date-time';
+    const TYPE_NUMBER = 'number';
+    const TYPE_PRICE = 'price';
+    const TYPE_FLOAT = 'float';
+    const TYPE_CHECKBOX = 'checkbox';
+    const TYPE_HIDDEN = 'hidden';
+    const TYPE_USER = 'user';
+    const TYPE_PASSWORD = 'password';
     //campo relacionado, se debe definir desde el método especial defineRelatedField
-    const FIELD_TYPE_RELATED = 'related';
-    const FIELD_TYPE_FILE = 'file';
+    const TYPE_RELATED = 'related';
+    const TYPE_FILE = 'file';
     
     private $_content = array();
     /**
@@ -59,12 +58,12 @@ abstract class Dictionary {
             foreach( $this->listFields() as $field ){
                 if( isset($data[$field]) ){
                     switch( $this->getFieldType($field) ){
-                        case self::FIELD_TYPE_FLOAT:
-                        case self::FIELD_TYPE_PRICE:
+                        case self::TYPE_FLOAT:
+                        case self::TYPE_PRICE:
                             $this->setMeta($field, $meta, floatval( $data[$field]) );
                             break;
-                        case self::FIELD_TYPE_ID:
-                        case self::FIELD_TYPE_NUMBER:
+                        case self::TYPE_ID:
+                        case self::TYPE_NUMBER:
                             $this->setMeta($field, $meta, intval( $data[$field]) );
                             break;
                         default:
@@ -84,7 +83,7 @@ abstract class Dictionary {
      * @param array|NULL $properties
      * @return \TripManDictionary Instancia para chaining
      */
-    protected function addField( $name, $type = self::FIELD_TYPE_TEXT, array $properties = null ){
+    protected function addField( $name, $type = self::TYPE_TEXT, array $properties = null ){
         if( !isset( $this->_content[$name]) ){
             
             $this->_content[$name] =  self::defineField($name, $type, $properties);
@@ -253,14 +252,14 @@ abstract class Dictionary {
     public function setValue( $field , $value ){
         if( $this->hasField($field)){
             switch($this->getFieldType($field)){
-                //case self::FIELD_TYPE_ID:
+                //case self::TYPE_ID:
                 //      por definir si procede cambiar ids
                 //    break;
-                case self::FIELD_TYPE_FLOAT:
-                case self::FIELD_TYPE_PRICE:
+                case self::TYPE_FLOAT:
+                case self::TYPE_PRICE:
                     $this->setMeta($field, 'value', floatval($value));
                     break;
-                case self::FIELD_TYPE_NUMBER:
+                case self::TYPE_NUMBER:
                     $this->setMeta($field, 'value', intval($value));
                     break;
                 default:
@@ -278,52 +277,52 @@ abstract class Dictionary {
      * @param array $properties Propiedades extra
      * @return array Definición del dato
      */
-    protected static final function defineField( $name, $type = self::FIELD_TYPE_TEXT , array $properties = array() ){
+    protected static final function defineField( $name, $type = self::TYPE_TEXT , array $properties = array() ){
 
         $properties['name'] = $name;
         $properties['type'] = $type;
         
         switch( $properties['type'] ){
-            case self::FIELD_TYPE_PASSWORD:
-            case self::FIELD_TYPE_USER:
+            case self::TYPE_PASSWORD:
+            case self::TYPE_USER:
                 //ambos campos siempre serán requeridos en los formularios
                 //tanto de registro como de inicio de sesión
                 //$properties['required'] = 1;
                 break;
-            case self::FIELD_TYPE_CHECKBOX:
+            case self::TYPE_CHECKBOX:
                 $properties['value'] = isset($properties['value']) ? intval($properties['value']) : 0;
                 break;
-            case self::FIELD_TYPE_NUMBER:
+            case self::TYPE_NUMBER:
                 if( !isset($properties['step']) ){
                     $properties['step'] = 1;
                 }
                 $properties['value'] = isset($properties['value']) ? intval($properties['value']) : 0;
                 break;
-            case self::FIELD_TYPE_PRICE:
+            case self::TYPE_PRICE:
                 if( !isset($properties['step']) ){
                     $properties['step'] = 0.05;
                 }
                 $properties['value'] = isset($properties['value']) ? floatval($properties['value']) : 0;
                 break;
-            case self::FIELD_TYPE_FLOAT:
+            case self::TYPE_FLOAT:
                 if( !isset($properties['step']) ){
                     $properties['step'] = 0.1;
                 }
                 $properties['value'] = isset($properties['value']) ? floatval($properties['value']) : 0;
                 break;
-//            case self::FIELD_TYPE_TEXTAREA:
+//            case self::TYPE_TEXTAREA:
 //                break;
-//            case self::FIELD_TYPE_EMAIL:
+//            case self::TYPE_EMAIL:
 //                break;
-//            case self::FIELD_TYPE_DATE:
+//            case self::TYPE_DATE:
 //                break;
-//            case self::FIELD_TYPE_CHECKBOX:
+//            case self::TYPE_CHECKBOX:
 //                break;
-//            case self::FIELD_TYPE_HIDDEN:
+//            case self::TYPE_HIDDEN:
 //                break;
-//            case self::FIELD_TYPE_LIST:
+//            case self::TYPE_LIST:
 //                break;
-//            case self::FIELD_TYPE_TEXT:
+//            case self::TYPE_TEXT:
 //                break;
             default:
                 //nada por agregar
