@@ -86,11 +86,14 @@ final class HookManager{
             
             if( $instance !== FALSE ){
                 //capture the output to dispatch in the response
-                $endpoint = $instance->endPoint( $instance->getOption('endpoint', 'default') );
+                $endpoint = $instance->endPoint( $instance->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
                 //use this to validate the current locale endpoint translation
                 $endpointLocale = $instance->endPoint( $endpoint , TRUE );
                 
-                if ( array_key_exists('template', $query) && $endpointLocale === $query['template']) {
+                //check both permalink and page template
+                if ( array_key_exists($endpointLocale, $query) ||
+                        ( array_key_exists('template', $query)
+                            && $endpointLocale === $query['template']) ) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
@@ -119,10 +122,10 @@ final class HookManager{
             global $wp, $wp_rewrite;
             
             $instance = \CodersApp::instance( $app );
-            
+
             if( $instance !== FALSE ){
                 //import the regiestered locale's endpoint from the settinsg
-                $endpoint = $instance->endPoint($instance->getOption( 'endpoint' , 'default') , TRUE );
+                $endpoint = $instance->endPoint($instance->getOption( 'endpoint' , \CodersApp::DEFAULT_EP ) , TRUE );
                 
                 //now let wordpress do it's stuff with the query router
                 $wp->add_query_var( 'template' );   
@@ -133,6 +136,7 @@ final class HookManager{
                         sprintf('^/%s/?$', $endpoint), 
                         'index.php?template=' . $endpoint,
                         'bottom' );
+                
                 //and rewrite
                 $wp_rewrite->flush_rules();
             }
