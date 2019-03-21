@@ -546,13 +546,13 @@ abstract class CalendarModel extends \CODERS\Framework\Component implements \COD
      * @param array $data
      * @return \CODERS\Framework\Models\CalendarModel | null
      */
-    public static final function create( $app , $model, array $data = array( ) ){
+    public static final function create( \CodersApp $app , $model, array $data = array( ) ){
 
-        $instance = \CodersApp::instance($app);
+        //$instance = \CodersApp::instance($app);
         
-        if( $instance !== FALSE ){
+        if( $app !== FALSE ){
 
-            $path = sprintf('%s/models/%s.calendar.php', $instance->appPath(), $model);
+            $path = sprintf('%s/models/%s.calendar.php', $app->appPath(), $model);
 
             $class = sprintf('\CODERS\Framework\Models\%sCalendar', \CodersApp::classify( $model ) );
 

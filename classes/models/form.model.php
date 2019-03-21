@@ -337,13 +337,13 @@ abstract class FormModel extends \CODERS\Framework\Dictionary implements \CODERS
      * @param array $data
      * @return \CODERS\Framework\Models\FormModel|boolean
      */
-    public static final function create( $app , $model , array $data = array( ) ){
+    public static final function create( \CodersApp $app , $model , array $data = array( ) ){
         
-        $instance = \CodersApp::instance($app);
+        //$instance = \CodersApp::instance($app);
         
-        if( $instance !== FALSE ){
+        if( $app !== FALSE ){
 
-            $path = sprintf('%s/models/%s.form.php', $instance->appPath(), $model);
+            $path = sprintf('%s/models/%s.form.php', $app->appPath(), $model);
 
             $class = sprintf('\CODERS\Framework\Models\%sForm', \CodersApp::classify( $model ) );
 

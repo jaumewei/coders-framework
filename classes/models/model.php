@@ -4,7 +4,7 @@ defined('ABSPATH') or die;
 /**
  * Modelo básico para gestionar información genérica
  */
-class BaseModel extends TripManComponent{
+class Model implements \CODERS\Framework\IModel{
     
     public function __construct( array $data = null ) {
         if( !is_null($data)){
@@ -18,5 +18,13 @@ class BaseModel extends TripManComponent{
      */
     public function __toString() {
         return parent::getName();
+    }
+
+    public function get($var, $default = null) {
+        
+    }
+
+    public function has($var): boolean {
+        
     }
 }

@@ -227,9 +227,9 @@ abstract class ListModel extends \CODERS\Framework\Dictionary implements \CODERS
      * @param string $model
      * @return \CODERS\Framework\Models\ListModel | NULL
      */
-    public static final function create( $app , $model , array $data = array( ) ){
+    public static final function create( \CodersApp $app , $model , array $data = array( ) ){
         
-        $instance = \CodersApp::instance($app);
+        //$instance = \CodersApp::instance($app);
         
         if( $instance !== FALSE ){
 

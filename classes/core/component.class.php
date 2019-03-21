@@ -16,7 +16,22 @@ abstract class Component{
      * @return string
      */
     public function __toString() {
+        
+        $class = explode('\\',get_class($this));
+        
+        return $class[ count( $class ) - 1 ];
+    }
+    /**
+     * @return string
+     */
+    public function __class(){
         return get_class($this);
+    }
+    /**
+     * @return string
+     */
+    public function __nominalize(){
+        return \CodersApp::nominalize($this);
     }
     /**
      * @param string $name

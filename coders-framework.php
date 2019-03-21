@@ -324,7 +324,7 @@ abstract class CodersApp{
      */
     public function createController( $controller , $admin = FALSE ){
         return class_exists('\CODERS\Framework\Controller') ?
-                \CODERS\Framework\Controller::create( $this->endPointName(), $controller, $admin ) :
+                \CODERS\Framework\Controller::create( $this, $controller, $admin ) :
                 FALSE;
     }
     /**
@@ -336,7 +336,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\ListModel')){
             
-            return \CODERS\Framework\Models\ListModel::create( $this->endPointName(), $model, $data);
+            return \CODERS\Framework\Models\ListModel::create( $this, $model, $data);
         }
         
         return FALSE;
@@ -350,7 +350,7 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\CalendarModel')){
             
-            return \CODERS\Framework\Models\CalendarModel::create( $this->endPointName(), $model, $data);
+            return \CODERS\Framework\Models\CalendarModel::create( $this, $model, $data);
         }
         
         return FALSE;
@@ -364,18 +364,37 @@ abstract class CodersApp{
         
         if(class_exists('\CODERS\Framework\Models\FormModel')){
             
-            return \CODERS\Framework\Models\FormModel::create( $this->endPointName(), $model, $data);
+            return \CODERS\Framework\Models\FormModel::create(
+                    $this,
+                    $model,
+                    $data);
         }
         
         return FALSE;
     }
 
     /**
-     * 
      * @param string $model
+     * @param array $data
+     * @return \CODERS\Framework\IModel | boolean
      */
-    public function createModel( $model ){
+    public function createModel( $model , $data = array( ) ){
         
+        $path = sprintf('%s/models/%s.form.php', $this->appPath(), $model);
+
+        $class = sprintf('\CODERS\Framework\Models\%sModel', self::classify($model));
+
+        if (file_exists($path)) {
+
+            require_once $path;
+
+            if (class_exists($class) && is_subclass_of($class, self::class, TRUE)) {
+
+                return new $class( $data );
+            }
+        }
+
+        return FALSE;
     }
     /**
      * @return string

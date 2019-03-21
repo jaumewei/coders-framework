@@ -1,8 +1,11 @@
-<?php defined('ABSPATH') or die;
+<?php namespace CODERS\Framework\Models;
+
+defined('ABSPATH') or die;
+
 /**
  * Gestión de parámetros de la aplicación
  */
-final class TripManParametersModel implements TripManIModel{
+class ParametersModel implements \CODERS\Framework\IModel{
     
     private $_parameters = array();
     
@@ -37,13 +40,6 @@ final class TripManParametersModel implements TripManIModel{
         return isset( $this->_parameters[$var] ) ? 
             $this->_parameters[ $var ] :
                 $default;
-    }
-    /**
-     * @param string $param
-     * @return bool
-     */
-    public final function checkParameter( $param ){
-        return isset($this->_parameters[$param]);
     }
     /**
      * @return array
@@ -127,6 +123,14 @@ final class TripManParametersModel implements TripManIModel{
         
         return false;
     }
+    /**
+     * @param string $param
+     * @return boolean
+     */
+    public function has($param){
+        return isset($this->_parameters[$param]);
+    }
+
 }
 
 
