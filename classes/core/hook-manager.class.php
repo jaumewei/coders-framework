@@ -78,22 +78,15 @@ final class HookManager{
         /* Handle template redirect according the template being queried. */
         add_action( self::HOOK_TEMPLATE_REDIRECT, function() use( $app ){
 
-            global $wp;
-            
             $instance = \CodersApp::instance( $app );
 
-            $query = $wp->query_vars;
-            
             if( $instance !== FALSE ){
                 //capture the output to dispatch in the response
                 $endpoint = $instance->endPoint( $instance->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
                 //use this to validate the current locale endpoint translation
                 $endpointLocale = $instance->endPoint( $endpoint , TRUE );
-                
                 //check both permalink and page template
-                if ( array_key_exists($endpointLocale, $query) ||
-                        ( array_key_exists('template', $query)
-                            && $endpointLocale === $query['template']) ) {
+                if ( \CODERS\Framework\HookManager::queryRoute( $endpointLocale )  ) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
@@ -173,6 +166,22 @@ final class HookManager{
         }
         
         return $this;
+    }
+    /**
+     * 
+     * @global type $wp
+     * @param string $endpoint
+     * @return boolean
+     */
+    public static final function queryRoute( $endpoint ){
+
+        global $wp;
+
+        $query = $wp->query_vars;
+
+        return array_key_exists($endpoint, $query) ||       //is permalink route
+                ( array_key_exists('template', $query)      //is post template
+                        && $endpoint === $query['template']);
     }
 }
 
