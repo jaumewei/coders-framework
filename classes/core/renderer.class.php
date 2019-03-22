@@ -33,6 +33,7 @@ abstract class Renderer{
         $this->_appKey = $app->endPointKey();
         
         $this->_appName = $app->endPointName();
+        
     }
     /**
      * @param string $name
@@ -46,16 +47,16 @@ abstract class Renderer{
      * @param string $tag
      * @param mixed $attributes
      * @param mixed $content
-     * \CODERS\Framework\Views\Html
+     * \CODERS\Framework\Views\HTML
      */
-    protected function __html( $tag, $attributes = array( ), $content = NULL ){
+    protected static function __html( $tag, $attributes = array( ), $content = NULL ){
         
-        if( class_exists('\CODERS\Framework\Views\Html')){
-            
-            return new HTML($tag, $attributes, $content );
+        if(class_exists('\CODERS\Framework\Views\HTML')){
+
+            return HTML::html($tag, $attributes, $content );
         }
         
-        return NULL;
+        return '<!-- HTML COMPONENT NOT LOADED! -->';
     }
     /**
      * @param string $input
@@ -66,11 +67,86 @@ abstract class Renderer{
         if( !is_null( $this->_model) &&  $this->_model->hasField($input)){
             
             switch( $this->_model->getFieldType($input)){
+                case Dictionary::TYPE_DROPDOWN:
+                    return HTML::inputDropDown(
+                            $input,
+                            $this->_model->listOptions($input),
+                            $this->_model->getValue($input),
+                            array('class' => 'form-input'));
+                case Dictionary::TYPE_DROPDOWN:
+                    return HTML::inputList(
+                            $input,
+                            $this->_model->listOptions($input),
+                            $this->_model->getValue($input),
+                            array('class' => 'form-input'));
+                case Dictionary::TYPE_OPTION:
+                    return HTML::inputOptionList(
+                            $input,
+                            $this->_model->listOptions($input),
+                            $this->_model->getValue($input),
+                            array('class' => 'form-input'));
+                case Dictionary::TYPE_USER:
+                case Dictionary::TYPE_ID:
+                    return '<b>not implemented</b>';
+                case Dictionary::TYPE_CHECKBOX:
+                    return $this->__html('input', array(
+                        'type' => 'checkbox',
+                        'name' => $input,
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
+                    ));
+                case Dictionary::TYPE_NUMBER:
+                case Dictionary::TYPE_FLOAT:
+                case Dictionary::TYPE_PRICE:
+                    return HTML::inputNumber(
+                            $input,
+                            $this->_model->getValue($input),
+                            array('class'=>'form-input'));
+                case Dictionary::TYPE_FILE:
+                    return HTML::inputFile($input, array(
+                        'class' => 'form-input'
+                    ));
+                case Dictionary::TYPE_DATE:
+                case Dictionary::TYPE_DATETIME:
+                    return $this->__html('input', array(
+                        'type' => 'date',
+                        'name' => $input,
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
+                    ));
+                case Dictionary::TYPE_EMAIL:
+                    return $this->__html('input', array(
+                        'type' => Dictionary::TYPE_EMAIL,
+                        'name' => $input,
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
+                    ));
+                case Dictionary::TYPE_TELEPHONE:
+                    return $this->__html('input', array(
+                        'type' => Dictionary::TYPE_TELEPHONE,
+                        'name' => $input,
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
+                    ));
+                case Dictionary::TYPE_PASSWORD:
+                    return $this->__html('input', array(
+                        'type' => Dictionary::TYPE_PASSWORD,
+                        'name' => $input,
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
+                    ));
+                case Dictionary::TYPE_TEXTAREA:
+                    return $this->__html('input', array(
+                        'type' => Dictionary::TYPE_TEXTAREA,
+                        'name' => $input,
+                        'class' => 'form-input',
+                    ),$this->_model->getValue($input));
                 default:
                     return $this->__html('input', array(
                         'type' => 'text',
                         'name' => $input,
-                        'value' => $this->_model->getValue($input)
+                        'value' => $this->_model->getValue($input),
+                        'class' => 'form-input',
                         ))->__toHtml();
             }
         }

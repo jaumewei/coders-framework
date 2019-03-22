@@ -236,6 +236,16 @@ abstract class Dictionary {
         return $output;
     }
     /**
+     * @param string $field
+     * @return array
+     */
+    public function listOptions( $field ){
+        
+        $options = sprintf('get%sOptions',$field);
+        
+        return method_exists($this, $options) ? $this->$options() : array();
+    }
+    /**
      * Valor de un campo
      * @param string $field
      * @return mixed

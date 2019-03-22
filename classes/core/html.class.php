@@ -35,7 +35,7 @@ class HTML{
      * @param mixed $content
      * @return HTML
      */
-    protected static final function __html( $TAG , array $attributes , $content = null ){
+    public static final function html( $TAG , array $attributes , $content = null ){
 
         if( isset( $attributes['class'])){
             if(is_array($attributes['class'])){
@@ -76,7 +76,7 @@ class HTML{
      * @return HTML
      */
     public function __toHtml(){
-        return self::__html($this->_htmlNode, $this->_htmlAttributes, $this->_htmlContent);
+        return self::html($this->_htmlNode, $this->_htmlAttributes, $this->_htmlContent);
     }
     /**
      * @param string $att
@@ -125,7 +125,7 @@ class HTML{
             }
         }
         
-        return self::__html('meta', $serialized );
+        return self::html('meta', $serialized );
     }
     /**
      * <link />
@@ -140,7 +140,7 @@ class HTML{
         
         $attributes[ 'type' ] = $type;
         
-        return self::__html( 'link', $attributes );
+        return self::html( 'link', $attributes );
     }
     /**
      * <a href />
@@ -157,7 +157,7 @@ class HTML{
             $atts['target'] = '_self';
         }
         
-        return self::__html('a', $atts, $label);
+        return self::html('a', $atts, $label);
     }
     /**
      * <ul></ul>
@@ -172,11 +172,11 @@ class HTML{
         
         foreach( $content as  $item ){
             $collection[] = !empty($itemClass) ?
-                    self::__html('li', array('class'=>$itemClass) , $item ) :
-                    self::__html('li', array(), $item ) ;
+                    self::html('li', array('class'=>$itemClass) , $item ) :
+                    self::html('li', array(), $item ) ;
         }
         
-        return self::__html( 'ul' , $atts ,  $collection );
+        return self::html( 'ul' , $atts ,  $collection );
     }
     /**
      * <ol></ol>
@@ -191,11 +191,11 @@ class HTML{
         
         foreach( $content as  $item ){
             $collection[] = !empty($itemClass) ?
-                    self::__html('li', array('class'=>$itemClass) , $item ) :
-                    self::__html('li', array(), $item ) ;
+                    self::html('li', array('class'=>$itemClass) , $item ) :
+                    self::html('li', array(), $item ) ;
         }
         
-        return self::__html( 'ol' , $atts ,  $collection );
+        return self::html( 'ol' , $atts ,  $collection );
     }
     /**
      * <span></span>
@@ -204,7 +204,7 @@ class HTML{
      * @return HTML
      */
     public static final function span( $content , $atts = array( ) ){
-        return self::__html('span', $atts , $content );
+        return self::html('span', $atts , $content );
     }
     /**
      * <img src />
@@ -216,7 +216,7 @@ class HTML{
         
         $atts['src'] = $src;
         
-        return self::__html('img', $atts);
+        return self::html('img', $atts);
     }
     /**
      * <label></label>
@@ -227,7 +227,7 @@ class HTML{
      */
     public static function label( $text , array $atts = array() ){
 
-        return self::__html('label', $atts, $text);
+        return self::html('label', $atts, $text);
     }
     /**
      * <input type="number" />
@@ -250,7 +250,7 @@ class HTML{
         
         $atts['type'] = 'number';
         
-        return self::__html('input', $atts);
+        return self::html('input', $atts);
     }
     /**
      * <span class="price" />
@@ -263,9 +263,9 @@ class HTML{
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $input );
         
-        return self::__html('span',
+        return self::html('span',
                 $atts ,
-                $value . self::__html('span', array('class'=>'coin'), $coin));
+                $value . self::html('span', array('class'=>'coin'), $coin));
     }
     /**
      * <textarea></textarea>
@@ -278,7 +278,7 @@ class HTML{
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $input );
         $atts['name'] = $input;
         
-        return self::__html('textarea', $atts, $value);
+        return self::html('textarea', $atts, $value);
     }
     /**
      * <input type="text" />
@@ -293,7 +293,7 @@ class HTML{
         $atts['value'] = $value;
         $atts['type'] = 'text';
         
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="password" />
@@ -305,7 +305,7 @@ class HTML{
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $input );
         $atts['name'] = $input;
         $atts['type'] = 'password';
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="search" />
@@ -320,7 +320,7 @@ class HTML{
         $atts['name'] = $input;
         $atts['value'] = $value;
         $atts['type'] = 'search';
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="date" />
@@ -337,7 +337,7 @@ class HTML{
         $atts['name'] = $input;
         $atts['value'] = $value;
         $atts['type'] = 'date';
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="tel" />
@@ -352,7 +352,7 @@ class HTML{
         $atts['name'] = $input;
         $atts['value'] = $value;
         $atts['type'] = 'tel';
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="email" />
@@ -367,7 +367,7 @@ class HTML{
         $atts['name'] = $input;
         $atts['value'] = $value;
         $atts['type'] = 'email';
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * <input type="checkbox" />
@@ -383,7 +383,7 @@ class HTML{
         $atts['value'] = $value;
         $atts['type'] = 'checkbox';
         if($checked){ $atts['checked'] = 1; }
-        return self::__html( 'input' , $atts );
+        return self::html( 'input' , $atts );
     }
     /**
      * Lista de opciones <input type="radio" />
@@ -415,13 +415,13 @@ class HTML{
                 $optionAtts['checked'] = 'checked';
             }
             
-            $radioItems[ ] = self::__html(
+            $radioItems[ ] = self::html(
                     'li',
                     array(),
-                    self::__html( 'input', $optionAtts, $label) );
+                    self::html( 'input', $optionAtts, $label) );
         }
         
-        return self::__html('ul', $atts, implode('</li><li>',  $radioItems));
+        return self::html('ul', $atts, implode('</li><li>',  $radioItems));
     }
     /**
      * <select size="5" />
@@ -449,13 +449,13 @@ class HTML{
         }
         
         foreach( $options as $option => $label ){
-            $items[] = self::__html(
+            $items[] = self::html(
                     'option',
                     $option == $value ? array('value'=> $option,'selected') : array('value'=>$option),
                     $label);
         }
         
-        return self::__html('select', $atts, $options );
+        return self::html('select', $atts, $options );
     }
     /**
      * <select size="1" />
@@ -479,7 +479,7 @@ class HTML{
      */
     public static function inputHidden( $input, $value ){
         
-        return self::__html('input', array(
+        return self::html('input', array(
             'type' => 'hidden',
             'name' => $input,
             'value' => $value,
@@ -505,7 +505,7 @@ class HTML{
             unset($atts[$max_filesize]);
         }
         
-        return self::renderHidden( $max_filesize, $file_size ).self::__html('file', $atts );
+        return self::renderHidden( $max_filesize, $file_size ).self::html('file', $atts );
     }
     /**
      * <button type="*" />
@@ -524,7 +524,7 @@ class HTML{
         if( !isset($atts['type'])){
             $atts['type'] = 'button';
         }
-        return self::__html('button', $atts, $label);
+        return self::html('button', $atts, $label);
     }
     /**
      * <button type="submit" />
