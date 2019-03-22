@@ -2,17 +2,10 @@
 
 defined('ABSPATH') or die;
 /**
- * Gestor de soporte de integración del framework con WordPress
- * 
- * - Se describen los hooks de la aplicación general, el cargador de módulos y varias
- * funciones necesarias del core e integración con el CMS.
- * 
- * - No se definen personalizaciones y gestiones de contenido concreto como tipos de post,
- * widgets u otros elementos que puedan significar parte de extensiones, pero sí debería eventualmente
- * admitir sobrecarga para facilitar la personalización de módulos een tiempo de carga del cms.
+ * WordPress CMS System Manager
  * 
  */
-final class HookManager{
+final class Cms{
     
     //inicializar aplicación e instancia, widgets y plugins cargados
     const HOOK_INIT = 'init';
@@ -69,7 +62,7 @@ final class HookManager{
     /**
      * Hooks the application endpoint response, bypassing the requested route through
      * the framework control
-     * @return \CODERS\Framework\HookManager
+     * @return \CODERS\Framework\Cms
      */
     private final function hookResponse(){
         
@@ -86,7 +79,7 @@ final class HookManager{
                 //use this to validate the current locale endpoint translation
                 $endpointLocale = $instance->endPoint( $endpoint , TRUE );
                 //check both permalink and page template
-                if ( \CODERS\Framework\HookManager::queryRoute( $endpointLocale )  ) {
+                if ( \CODERS\Framework\Cms::queryRoute( $endpointLocale )  ) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
@@ -104,7 +97,7 @@ final class HookManager{
     }
     /**
      * Redirect End Point URL
-     * @return \CODERS\Framework\HookManager
+     * @return \CODERS\Framework\Cms
      */
     private final function hookEndPoint(){
 
@@ -139,7 +132,7 @@ final class HookManager{
     }
     /**
      * Hook para la página de administración del plugin
-     * @return \CODERS\Framework\HookManager
+     * @return \CODERS\Framework\Cms
      */
     private final function hookAdmin(){
 
@@ -148,7 +141,7 @@ final class HookManager{
     }
     /**
      * Cargador de hooks personalizados
-     * @return \CODERS\Framework\HookManager
+     * @return \CODERS\Framework\Cms
      */
     private final function hookCustom(){
         

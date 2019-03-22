@@ -29,9 +29,10 @@ abstract class CodersApp{
      */
     private static $_instance = [];
     /**
-     * @var \CODERS\Framework\HookManager
+     * Reference to CMS Functions (Wordress or Joomla)
+     * @var \CODERS\Framework\Cms
      */
-    private $_hookMgr = null;
+    private $_system = null;
     /**
      * End point key
      * @var string
@@ -56,7 +57,7 @@ abstract class CodersApp{
         self::TYPE_CORE => [
             'component',
             'db',           //wpdb helper
-            'hook-manager',
+            'cms',          //system CMS (Joomla/Wordpress)
             'dictionary',
             'request',      //inputs
             'controller',
@@ -241,9 +242,9 @@ abstract class CodersApp{
      */
     private final function __hook(){
 
-        if(class_exists('\CODERS\Framework\HookManager')){
+        if(class_exists('\CODERS\Framework\Cms')){
     
-            $this->_hookMgr = new \CODERS\Framework\HookManager( $this );
+            $this->_system = new \CODERS\Framework\Cms( $this );
         }
         
         return $this;
@@ -253,14 +254,14 @@ abstract class CodersApp{
      */
     public final function hasHooks(){
         
-        return !is_null($this->_hookMgr);
+        return !is_null($this->_system);
     }
     /**
-     * @return \CODERS\Framework\HookManager
+     * @return \CODERS\Framework\Cms
      */
-    public final function hooks(){
+    public final function cms(){
         
-        return $this->_hookMgr;
+        return $this->_system;
     }
     /**
      * @return \CODERS\Framework\Request|boolean
