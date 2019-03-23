@@ -111,7 +111,9 @@ final class Cms{
 
             if( $instance !== FALSE ){
                 //import the regiestered locale's endpoint from the settinsg
-                $endpoint = $instance->endPoint($instance->getOption( 'endpoint' , \CodersApp::DEFAULT_EP ) , TRUE );
+                $endpoint = $instance->endPoint($instance->getOption(
+                        'endpoint' ,
+                        \CodersApp::DEFAULT_EP ) , TRUE );
                 
                 //now let wordpress do it's stuff with the query router
                 $wp->add_query_var( 'template' );   
@@ -159,6 +161,22 @@ final class Cms{
         }
         
         return $this;
+    }
+    /**
+     * List all available langguates in the CMS
+     * @return array
+     */
+    public final function listLanguages(){
+        
+        $translations = array( );
+        
+        $locale = wp_get_installed_translations('core');
+        
+        foreach (array_keys($locale['default']) as $lang) {
+            $translations[] = $lang;
+        }
+
+        return $translations;
     }
     /**
      * 

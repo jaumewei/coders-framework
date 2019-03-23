@@ -25,19 +25,47 @@ abstract class Controller extends Component{
 
     }
     /**
+     * @return boolean
+     */
+    private final function importRenderer(){
+        
+        $renderer = '\CODERS\Framework\Views\Renderer';
+        
+        if( class_exists($renderer)){
+            
+            return TRUE;
+        }
+        else{
+
+            require_once(sprintf('%s/classes/core/renderer.class.php',CODERS_FRAMEWORK_BASE));
+            
+            return class_exists($renderer);
+        }
+    }
+    /**
      * @param string $view
      * @return \CODERS\Framework\Views\Renderer | boolean
      */
     protected function renderer( $view = 'main' ){
-        
-        $app = \CodersApp::instance($this->_appName);
-        
-        if( $app !== FALSE && class_exists('\CODERS\Framework\Views\Renderer' ) ){
-            
-            return \CODERS\Framework\Views\Renderer::create($app, $view , is_admin( ) );
+       
+        if( $this->importRenderer() ){
+
+            $app = \CodersApp::instance($this->_appName);
+
+            if( $app !== FALSE ){
+
+                return \CODERS\Framework\Views\Renderer::createDocument($app, $view , is_admin( ) );
+            }
         }
         
         return FALSE;
+    }
+    /**
+     * @param \CODERS\Framework\IModel $content
+     */
+    protected function json( IModel $content ){
+        
+        json_encode( $content->toArray() );
     }
     
     /**

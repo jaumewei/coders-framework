@@ -24,30 +24,23 @@ abstract class CodersApp{
     const DEFAULT_EP = 'default';
     
     /**
-     * @author Jaume Llopis <jaume@mnkcoder.com>
+     * Instances must bestored within an array, they're up to be used both in
+     * frontend context or in admin/backend- which requires always some preload
+     * methods to know all available installed applications.
+     * 
      * @var \CodersApp[] Singleton of Instances
      */
     private static $_instance = [];
     /**
-     * Reference to CMS Functions (Wordress or Joomla)
-     * @var \CODERS\Framework\Cms
-     */
-    private $_system = null;
-    /**
-     * End point key
      * @var string
      */
-    private $_EPK;
+    private static $_current = '';
+    
     /**
-     * End point name
-     * @var string
-     */
-    private $_EPN;
-    /**
-     * Componentes cargados
+     * CORE COMPONENT DEFINITION
      * @var array
      */
-    private $_components = [
+    private static $_setup = [
         self::TYPE_INTERFACES => [
             'service',
             'plugin',
@@ -64,6 +57,12 @@ abstract class CodersApp{
             'html','renderer',
             'service',
         ],
+    ];
+    /**
+     * INSTANCE COMPONENTS
+     * @var array
+     */
+    private $_components = [
         self::TYPE_PROVIDERS => [
             
         ],
@@ -78,6 +77,22 @@ abstract class CodersApp{
         ],
     ];
     /**
+     * Reference to CMS Functions (Wordress or Joomla)
+     * @var \CODERS\Framework\Cms
+     */
+    private $_system = null;
+    /**
+     * End point key
+     * @var string
+     */
+    private $_EPK;
+    /**
+     * End point name
+     * @var string
+     */
+    private $_EPN;
+    
+    /**
      * 
      */
     protected function __construct( $key = '' ) {
@@ -85,8 +100,10 @@ abstract class CodersApp{
         $this->_EPN = strval($this);
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
-        //
-        $this->__initializeFramework()->__hook()->__init();
+        //load all instance classes
+        $this->importComponents( $this->_components );
+        //hook entrypoint and initialize app
+        $this->__hook()->__init();
     }
     /**
      * @return string
@@ -130,10 +147,10 @@ abstract class CodersApp{
                 plugin_dir_url(__FILE__) );
     }
     /**
-     * @return CodersApp
+     * Preload all core and instance components
      */
-    private final function __initializeFramework(){
-        foreach( $this->_components as $type => $list ){
+    private static final function importComponents( array $components ){
+        foreach( $components as $type => $list ){
             foreach( $list as $member ){
                 
                 $path = self::componentPath($member, $type);
@@ -142,15 +159,12 @@ abstract class CodersApp{
                     
                     require_once $path;
                         
-                    $class = self::componentClass($member, $type);
-                    
-                    if( $class !== FALSE ){
-                        //
-                    }
+                    //$class = self::componentClass($member, $type);
+                    //if( $class !== FALSE ){
+                    //}
                 }
             }
         }
-        return $this;
     }
     /**
      * Initializer
@@ -169,20 +183,6 @@ abstract class CodersApp{
         $default = $this->endPointName();
 
         return array( $default => array( ) );
-        
-        //no need to list all languages here, just output a default end point for each
-        
-        $translations = array( );
-        
-        $locale = wp_get_installed_translations('core');
-        
-        if( isset( $locale[self::DEFAULT_EP]) && is_array($locale[self::DEFAULT_EP])){
-            foreach( array_keys($locale[self::DEFAULT_EP]) as $lang ){
-                $translations[ $lang ] =  $default;
-            }
-        }
-        
-        return array( $default => $translations );
     }
     /**
      * @param string $endpoint (default)
@@ -267,6 +267,8 @@ abstract class CodersApp{
      * @return \CODERS\Framework\Request|boolean
      */
     public function request(){
+        //set the current instance to the requester
+        self::$_current = strval($this);
         
         if(class_exists('\CODERS\Framework\Request')){
             
@@ -290,33 +292,36 @@ abstract class CodersApp{
      * 
      */
     public function response( ){
+        
+        if( strlen( self::$_current ) === 0 ){
 
-        if( class_exists('CODERS\Framework\Controller') ){
-
+            //set the current application token
             $request = $this->request();
-            
-            if( $request !== FALSE ){
-                try{
-                    $context = \CODERS\Framework\Controller::create(
-                            $this->endPointName(),
-                            $request->context( ),
-                            is_admin());
-                    
-                    if( !is_null($context)){
 
-                        if( !$context->__execute( $request ) ){
+            //now all application context can reference to this instance with ::current()
+            if( class_exists('CODERS\Framework\Controller') ){
 
-                            //
+                if( $request !== FALSE ){
+                    try{
+                        $context = \CODERS\Framework\Controller::create(
+                                $this->endPointName(),
+                                $request->context( ),
+                                is_admin());
+
+                        if( !is_null($context)){
+
+                            if( !$context->__execute( $request ) ){
+
+                                //
+                            }
                         }
                     }
-                }
-                catch (Exception $ex) {
-                    die( $ex->getMessage());
+                    catch (Exception $ex) {
+                        die( $ex->getMessage());
+                    }
                 }
             }
         }
-        
-        //return $this;
     }
     /**
      * @param string $controller
@@ -491,7 +496,7 @@ abstract class CodersApp{
      * @param string $application
      * @return \CodersApp
      */
-    private static final function __instance( $application , $key ){
+    private static final function importInstance( $application ){
 
         //$path = sprintf('%s/modules/%s/%s.module.php',CODERS_FRAMEWORK_BASE ,$name,$name);
         $path = sprintf('%s/../%s/application.php',__DIR__,$application);
@@ -504,7 +509,7 @@ abstract class CodersApp{
             
             if(class_exists($class) && is_subclass_of( $class , self::class , TRUE ) ){
 
-                return new $class( $key );
+                return new $class( );
             }
             else{
                 throw new Exception(sprintf('INVALID APPLICATION [%s]',$class) );
@@ -594,12 +599,29 @@ abstract class CodersApp{
         return strlen($app) && isset(self::$_instance[$app]) ? self::$_instance[ $app ] : FALSE;;
     }
     /**
+     * Current instance
+     * @return \CodersApp | boolean
+     */
+    public static final function current(){
+        
+        return strlen( self::$_current ) && isset( self::$_instance[self::$_current]) ?
+            self::$_instance[ self::$_current ] :
+            FALSE;
+    }
+    /**
      * @return array
      */
     public static final function listInstances(){
         return array_keys(self::$_instance);
     }
-
+    /**
+     * @param string $instance
+     * @return boolean
+     */
+    public static final function isLoaded( $instance ){
+        
+        return array_key_exists($instance, self::$_instance);
+    }
     /**
      * @param string $app
      * @return string
@@ -636,11 +658,34 @@ abstract class CodersApp{
         return implode('', $output);
     }
     /**
+     * Creates a setup tool to activate/deactivate applications
+     * @param string $app
+     * @param string $key
+     * @return \CODERS\Framework\Installer
+     */
+    public static final function installer( $app , $key = '' ){
+        
+        $path = sprintf('%s/classes/core/installer.class.php',CODERS_FRAMEWORK_BASE);
+        
+        if(file_exists($path)){
+
+            require_once $path;
+            
+            if(class_exists('\CODERS\Framework\Installer')){
+                return new \CODERS\Framework\Installer(
+                        $app,
+                        strlen($key) ? $key : self::appKey($app));
+            }
+        }
+        
+        return NULL;
+    }
+    /**
      * Inicialización
      * @author Jaume Llopis <jaume@mnkcoder.com>
      * @param string $app
      * @param string $key
-     * @return \CodersApp|NULL
+     * @return boolean
      */
     public static function init( $app = '' ){
         
@@ -648,19 +693,21 @@ abstract class CodersApp{
 
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
+            //register all core components
+            self::importComponents( self::$_setup );
         }
         
         if( strlen($app) && !isset( self::$_instance[$app] ) ){
 
-            $key = self::appKey($app);
-            
             try{
                 
-                $instance = self::__instance( $app , $key );
+                $instance = self::importInstance( $app );
                 
                 if( !is_null($instance)){
 
                     self::$_instance[ $app ] = $instance;
+                    
+                    return TRUE;
                 }
             }
             catch (Exception $ex) {
@@ -668,7 +715,7 @@ abstract class CodersApp{
             }
         }
         
-        return strlen($app) ? self::instance( $app ) : null;
+        return FALSE;
     }
 }
 

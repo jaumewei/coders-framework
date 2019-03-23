@@ -5,7 +5,7 @@ defined('ABSPATH') or die;
 /**
  * 
  */
- class DocumentRenderer extends Renderer{
+ class DocumentRender extends Renderer{
     /**
      * @var URL
      */
@@ -200,4 +200,55 @@ defined('ABSPATH') or die;
         
         return $this->registerStyle( $font_id, $font_url );
     }
+    /**
+     * @return \CODERS\Framework\Views\DocumentRenderer
+     */
+    protected function renderHeader(){
+        
+        wp_head();
+        
+        return $this;
+    }
+    /**
+     * 
+     * @return \CODERS\Framework\Views\DocumentRenderer
+     */
+    protected function renderFooter(){
+        
+        wp_footer();
+        
+        return $this;
+    }
+    /**
+     * 
+     * @return \CODERS\Framework\Views\DocumentRenderer
+     */
+    protected function renderContent(){
+        
+        $layout = $this->getLayout();
+
+        if(file_exists($layout)){
+
+            require $layout;
+        }
+        else{
+            printf('<h1> LAYOUT %s NOT FOUND </h1>',$layout);
+            printf('<!-- LAYOUT %s NOT FOUND -->',$layout);
+        }
+
+        return $this;
+    }
+    /**
+     * 
+     * @return \CODERS\Framework\Views\DocumentRenderer
+     */
+    public function display() {
+        //HEADER & OPEN DOCUMENT
+        return $this->renderHeader()
+                ->renderContent()
+                ->renderFooter();
+    }
 }
+
+
+

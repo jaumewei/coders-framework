@@ -184,21 +184,7 @@ abstract class Renderer{
     /**
      * @return \CODERS\Framework\Views\Renderer
      */
-    public function display( ){
-        
-        $layout = $this->getLayout();
-
-        if(file_exists($layout)){
-
-            require $layout;
-        }
-        else{
-            printf('<h1> LAYOUT %s NOT FOUND </h1>',$layout);
-            printf('<!-- LAYOUT %s NOT FOUND -->',$layout);
-        }
-        
-        return $this;
-    }
+    abstract public function display( );
     /**
      * @param string $title
      * @return \CODERS\Framework\Views\Renderer
@@ -296,5 +282,54 @@ abstract class Renderer{
         
         return FALSE;
     }
+    public static final function createCalendar(){
+        
+    }
+    public static final function createMap(){
+        
+    }
+    public static final function createForm(){
+        
+    }
+    /**
+     * @param \CodersApp $app
+     * @param string $template
+     * @param boolean $admin
+     * @return boolean|\CODERS\Framework\Views\DocumentRender
+     */
+    public static final function createDocument(\CodersApp $app , $template , $admin = FALSE ){
+        
+        if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
+
+            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
+            
+            if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
+
+                return FALSE;
+            }
+        }
+
+        $path = sprintf('%s/%s/views/%s.view.php',
+                $app->appPath(),
+                $admin ? 'admin' : 'public',
+                $template);
+        
+        $class = sprintf('\CODERS\Framework\Views\%sView', \CodersApp::classify($template));
+        
+        if(file_exists($path)){
+            
+            require $path;
+            
+            if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Views\DocumentRender::class)){
+                
+                return new $class( $app );
+            }
+        }
+        
+        return FALSE;
+    }
 }
+
+
+
 

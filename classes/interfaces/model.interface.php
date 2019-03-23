@@ -19,4 +19,8 @@ interface IModel{
      * @return boolean
      */
     function has( $var );
+    /**
+     * @return array
+     */
+    function toArray( );
 }
