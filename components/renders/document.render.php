@@ -33,9 +33,9 @@ defined('ABSPATH') or die;
      */
     private $_layout,$_context,$_title = '';
 
-    protected function __construct(\CodersApp $app) {
+    protected function __construct() {
         
-        parent::__construct($app);
+        //parent::__construct($app);
 
         $this->__registerAssets( );
     }

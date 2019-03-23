@@ -280,23 +280,26 @@ abstract class CodersApp{
     public function response( ){
         
         try{
+
             if( strlen( self::$_current ) === 0 ){
-
+                //RESERVE THIS APP TO THE CURRENT INSTANCE
+                self::$_current = strval($this);
+                
                 if( class_exists( '\CODERS\Framework\Request' )
-                        && class_exists( 'CODERS\Framework\Controller' ) ){
-
+                        && class_exists( '\CODERS\Framework\Controller' ) ){
+                    
                     //set the current application token
                     $request = \CODERS\Framework\Request::import( $this );
-
+                    
                     $isAdmin = $this->_system->isAdmin();
-
+                    
                     if( $request !== FALSE ){
                             
                         $context = \CODERS\Framework\Controller::create(
                                 $this->endPointName(),
                                 $request->context( ),
                                 $isAdmin);
-
+                        
                         if( !is_null($context)){
 
                             if( $context->__execute( $request ) ){
