@@ -264,20 +264,6 @@ abstract class CodersApp{
         return $this->_system;
     }
     /**
-     * @return \CODERS\Framework\Request|boolean
-     */
-    public function request(){
-        //set the current instance to the requester
-        self::$_current = strval($this);
-        
-        if(class_exists('\CODERS\Framework\Request')){
-            
-            return \CODERS\Framework\Request::import( $this );
-        }
-        
-        return FALSE;
-    }
-    /**
      * @return \CODERS\Framework\DB|boolean
      */
     public function db(){
@@ -289,39 +275,55 @@ abstract class CodersApp{
         return FALSE;
     }
     /**
-     * 
+     * @return boolean
      */
     public function response( ){
         
-        if( strlen( self::$_current ) === 0 ){
+        try{
+            if( strlen( self::$_current ) === 0 ){
 
-            //set the current application token
-            $request = $this->request();
+                if( class_exists( '\CODERS\Framework\Request' )
+                        && class_exists( 'CODERS\Framework\Controller' ) ){
 
-            //now all application context can reference to this instance with ::current()
-            if( class_exists('CODERS\Framework\Controller') ){
+                    //set the current application token
+                    $request = \CODERS\Framework\Request::import( $this );
 
-                if( $request !== FALSE ){
-                    try{
+                    $isAdmin = $this->_system->isAdmin();
+
+                    if( $request !== FALSE ){
+                            
                         $context = \CODERS\Framework\Controller::create(
                                 $this->endPointName(),
                                 $request->context( ),
-                                is_admin());
+                                $isAdmin);
 
                         if( !is_null($context)){
 
-                            if( !$context->__execute( $request ) ){
+                            if( $context->__execute( $request ) ){
 
-                                //
+                                return TRUE;
                             }
                         }
+                        else{
+                            //throw
+                        }
                     }
-                    catch (Exception $ex) {
-                        die( $ex->getMessage());
+                    else{
+                        //throw
                     }
                 }
+                else{
+                    //throw
+                }
             }
+            else{
+                //
+            }
+        } catch (Exception $ex) {
+            die($ex->getMessage());
         }
+
+        return FALSE;
     }
     /**
      * @param string $controller
@@ -341,22 +343,48 @@ abstract class CodersApp{
     public function createList( $model , array $data = array( ) ){
         
         if(class_exists('\CODERS\Framework\Models\ListModel')){
-            
-            return \CODERS\Framework\Models\ListModel::create( $this, $model, $data);
+
+            $path = sprintf('%s/models/%s.list.php', $this->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sList', \CodersApp::classify($model));
+
+            if (file_exists($path)) {
+
+                require_once $path;
+
+                if (class_exists($class)
+                        && is_subclass_of($class, \CODERS\Framework\Models\ListModel::class, TRUE)) {
+
+                    return new $class($data);
+                }
+            }
         }
-        
+
         return FALSE;
     }
     /**
      * @param string $model
      * @param array $data
-     * @return \CODERS\Framework\Models\ListModel|boolean
+     * @return \CODERS\Framework\Models\CalendarModel | boolean
      */
-    public function createCalendar( $model , array $data = array( ) ){
+    public function createCalendar( $model , array $data = array( ) , array $settings = array( ) ){
         
         if(class_exists('\CODERS\Framework\Models\CalendarModel')){
             
-            return \CODERS\Framework\Models\CalendarModel::create( $this, $model, $data);
+            $path = sprintf('%s/models/%s.calendar.php', $this->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sCalendar', \CodersApp::classify( $model ) );
+
+            if( file_exists( $path ) ){
+
+                require_once $path;
+
+                if( class_exists($class)
+                        && is_subclass_of($class, \CODERS\Framework\Models\CalendarModel::class ,TRUE)){
+
+                    return new $class( $data , $settings );
+                }
+            }
         }
         
         return FALSE;
@@ -364,16 +392,26 @@ abstract class CodersApp{
     /**
      * @param string $model
      * @param array $data
-     * @return \CODERS\Framework\Models\ListModel|boolean
+     * @return \CODERS\Framework\Models\FormModel | boolean
      */
     public function createForm( $model , array $data = array( ) ){
         
         if(class_exists('\CODERS\Framework\Models\FormModel')){
             
-            return \CODERS\Framework\Models\FormModel::create(
-                    $this,
-                    $model,
-                    $data);
+            $path = sprintf('%s/models/%s.form.php', $this->appPath(), $model);
+
+            $class = sprintf('\CODERS\Framework\Models\%sForm', \CodersApp::classify( $model ) );
+
+            if( file_exists( $path ) ){
+
+                require_once $path;
+
+                if( class_exists($class)
+                        && is_subclass_of($class, \CODERS\Framework\Models\FormModel::class ,TRUE)){
+
+                    return new $class( $data );
+                }
+            }
         }
         
         return FALSE;
@@ -386,7 +424,7 @@ abstract class CodersApp{
      */
     public function createModel( $model , $data = array( ) ){
         
-        $path = sprintf('%s/models/%s.form.php', $this->appPath(), $model);
+        $path = sprintf('%s/models/%s.model.php', $this->appPath(), $model);
 
         $class = sprintf('\CODERS\Framework\Models\%sModel', self::classify($model));
 
@@ -394,7 +432,8 @@ abstract class CodersApp{
 
             require_once $path;
 
-            if (class_exists($class) && is_subclass_of($class, self::class, TRUE)) {
+            if (class_exists($class)
+                    && is_subclass_of($class, \CODERS\Framework\IModel::class, TRUE)) {
 
                 return new $class( $data );
             }

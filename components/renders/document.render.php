@@ -27,6 +27,11 @@ defined('ABSPATH') or die;
      * @var array Metas adicionales del componente
      */
     private $_metas = array();
+    /**
+     * Layout and context to display the view
+     * @var string
+     */
+    private $_layout,$_context,$_title = '';
 
     protected function __construct(\CodersApp $app) {
         
@@ -236,6 +241,54 @@ defined('ABSPATH') or die;
             printf('<!-- LAYOUT %s NOT FOUND -->',$layout);
         }
 
+        return $this;
+    }
+    /**
+     * @return URL Url de desconexión de la sesión de WP
+     */
+    public static final function renderLogOut(){
+        return wp_logout_url( site_url() );
+    }
+    /**
+     * Retorna la ruta URI del layout de la vista seleccionada o devuelve nulo si no existe
+     * @param string $layout
+     * @return string | boolean
+     */
+    protected final function getLayout( ){
+        
+        $app = \CodersApp::current();
+        
+        if( $app !== FALSE ){
+            return sprintf('%s/%s/views/layouts/%s.layout.php',
+                    $app->appPath(),
+                    is_admin() ? 'admin' : 'public',
+                    $this->_layout);
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @return string
+     */
+    protected function getContext(){ return $this->_context; }
+    /**
+     * @return string
+     */
+    protected function getTitle(){ return $this->_title; }
+    /**
+     * @param string $layout
+     * @param string $context
+     * @param string $title
+     * @return \CODERS\Framework\Views\DocumentRender
+     */
+    public function setLayout( $layout = 'default' , $context = 'main' , $title = '' ){
+        
+        $this->_layout = $layout;
+        
+        $this->_context = $context;
+        
+        $this->_title = $title;
+        
         return $this;
     }
     /**

@@ -27,9 +27,9 @@ abstract class CalendarModel extends \CODERS\Framework\Component implements \COD
     const MONTH_NOVEMBER = 11;
     const MONTH_DECEMBER = 12;
     
-    protected function __construct( array $settings = null ) {
+    public function __construct( array $data = array( ), array $settings = array( ) ) {
         
-        if( !is_null($settings)){
+        if( count($settings)){
             foreach($settings as $var => $val ){
                 $this->set($var, $val);
             }
@@ -538,36 +538,6 @@ abstract class CalendarModel extends \CODERS\Framework\Component implements \COD
         $this->set('reverse_selection',$reverse);
         
         return $this;
-    }
-    /**
-     * Crea un calendario
-     * @param string $app
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\Models\CalendarModel | null
-     */
-    public static final function create( \CodersApp $app , $model, array $data = array( ) ){
-
-        //$instance = \CodersApp::instance($app);
-        
-        if( $app !== FALSE ){
-
-            $path = sprintf('%s/models/%s.calendar.php', $app->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sCalendar', \CodersApp::classify( $model ) );
-
-            if( file_exists( $path ) ){
-
-                require_once $path;
-
-                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
-
-                    return new $class( $data );
-                }
-            }
-        }
-
-        return FALSE;
     }
 }
 

@@ -2,8 +2,7 @@
 
 defined('ABSPATH') or die;
 /**
- * WordPress CMS System Manager
- * 
+ * WordPress CMS System Adapter * 
  */
 final class Cms{
     
@@ -193,6 +192,13 @@ final class Cms{
         return array_key_exists($endpoint, $query) ||       //is permalink route
                 ( array_key_exists('template', $query)      //is post template
                         && $endpoint === $query['template']);
+    }
+    /**
+     * @return boolean
+     */
+    public static final function isAdmin(){
+        
+        return is_admin();
     }
 }
 

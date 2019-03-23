@@ -14,7 +14,7 @@ abstract class ListModel extends \CODERS\Framework\Dictionary implements \CODERS
     private $_index = null;
     private $_identifier = null;
     
-    protected function __construct() {
+    public function __construct( array $data = array( ) ) {
         
     }
     /**
@@ -221,33 +221,4 @@ abstract class ListModel extends \CODERS\Framework\Dictionary implements \CODERS
      * @param mixed $filters Filtros
      */
     abstract public function paginate( $page = 1 , $order = null, $filters = null );
-    /**
-     * Carga una lista para gestionar colecciones de registros
-     * @param string $app
-     * @param string $model
-     * @return \CODERS\Framework\Models\ListModel | NULL
-     */
-    public static final function create( \CodersApp $app , $model , array $data = array( ) ){
-        
-        //$instance = \CodersApp::instance($app);
-        
-        if( $instance !== FALSE ){
-
-            $path = sprintf('%s/models/%s.list.php', $instance->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sList', \CodersApp::classify( $model ) );
-
-            if( file_exists( $path ) ){
-
-                require_once $path;
-
-                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
-
-                    return new $class( $data );
-                }
-            }
-        }
-
-        return FALSE;
-    }
 }

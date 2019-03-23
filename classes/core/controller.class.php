@@ -14,14 +14,14 @@ abstract class Controller extends Component{
      */
     private $_redirections = 0;
     
-    private $_appName;
+    //private $_appName;
     
     /**
      * @param \CodersApp $app
      */
-    protected function __construct( \CodersApp $app ) {
+    protected function __construct( ) {
         
-        $this->_appName = $app->endPointName();
+        //$this->_appName = $app->endPointName();
 
     }
     /**
@@ -50,7 +50,7 @@ abstract class Controller extends Component{
        
         if( $this->importRenderer() ){
 
-            $app = \CodersApp::instance($this->_appName);
+            $app = \CodersApp::current();
 
             if( $app !== FALSE ){
 

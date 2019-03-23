@@ -29,13 +29,14 @@ abstract class FormModel extends \CODERS\Framework\Dictionary implements \CODERS
     /**
      * @param array | null $dataSet Set de datos a importar
      */
-    protected function __construct( array $dataSet = null ) {
+    public function __construct( array $data = array( ) ) {
+
         //agregar siempre antispam por defecto
         $this->addField(self::FORM_FIELD_ANTISPAM,self::FIELD_TYPE_ANTISPAM);
         
-        if( !is_null($dataSet)){
+        if( !is_null($data)){
 
-            $this->importData($dataSet);
+            $this->importData($data);
         }
     }
     /**
@@ -329,36 +330,6 @@ abstract class FormModel extends \CODERS\Framework\Dictionary implements \CODERS
             }
         }
         return $counter;
-    }
-    /**
-     * Crea un form de datos
-     * @param string $app
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\Models\FormModel|boolean
-     */
-    public static final function create( \CodersApp $app , $model , array $data = array( ) ){
-        
-        //$instance = \CodersApp::instance($app);
-        
-        if( $app !== FALSE ){
-
-            $path = sprintf('%s/models/%s.form.php', $app->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sForm', \CodersApp::classify( $model ) );
-
-            if( file_exists( $path ) ){
-
-                require_once $path;
-
-                if( class_exists($class) && is_subclass_of($class, self::class ,TRUE)){
-
-                    return new $class( $data );
-                }
-            }
-        }
-
-        return FALSE;
     }
     /**
      * Importa directamente los datos sobre el modelo del formulario

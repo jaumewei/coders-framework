@@ -12,7 +12,7 @@ abstract class Renderer{
      * Application name and Key
      * @var string
      */
-    private $_appKey,$_appName;
+    //private $_appKey,$_appName;
     /**
      * @var \CODERS\Framework\Dictionary
      */
@@ -20,28 +20,31 @@ abstract class Renderer{
     
     //private $_html = NULL;
     /**
-     * Layout and context to display the view
-     * @var string
-     */
-    private $_layout,$_context,$_title = '';
-    
-    /**
-     * @param \CodersApp $app
-     */
-    protected function __construct( \CodersApp $app ) {
-        
-        $this->_appKey = $app->endPointKey();
-        
-        $this->_appName = $app->endPointName();
-        
-    }
-    /**
      * @param string $name
-     * @return string
+     * @return mixed
      */
     public function __get($name) {
         
-        return $name;
+        if( preg_match('/^input_/', $name) ){
+            return $this->__input(substr($name, 6));
+        }
+        elseif( preg_match(  '/^list_[a-z_]*_options$/' , $name ) ){
+            return $this->__options(substr($name, 5, strlen($name) - 5 - 8 ) );
+        }
+        elseif( preg_match(  '/^list_/' , $name ) ){
+            return $this->__options(substr($name, 5));
+        }
+        elseif( preg_match(  '/^value_/' , $name ) ){
+            return $this->__value(substr($name, 6));
+        }
+        elseif( preg_match(  '/^display_/' , $name ) ){
+            return $this->__display(substr($name, 8));
+        }
+        elseif( preg_match(  '/^label_/' , $name ) ){
+            return $this->__label(substr($name, 6));
+        }
+        
+        return '';
     }
     /**
      * @param string $tag
@@ -157,10 +160,33 @@ abstract class Renderer{
      * @param string $field
      * @return string
      */
-    protected function __data( $field ){
+    protected function __value( $field ){
         
         if( !is_null( $this->_model)){
             return $this->_model->$field;
+        }
+
+        return sprintf('<!-- DATA %s NOT FOUND -->',$field);
+    }
+    /**
+     * @param string $field
+     * @return array
+     */
+    protected function __options( $field ){
+        
+        return !is_null($this->_model) ?
+                $this->_model->listOptions($field) :
+                array();
+    }
+    /**
+     * @param string $field
+     * @return string
+     */
+    protected function __label( $field ){
+
+        if( !is_null( $this->_model)){
+            $meta = $this->_model->getFieldMeta($field);
+            return array_key_exists('label', $meta) ? $meta['label'] : $field;
         }
 
         return sprintf('<!-- DATA %s NOT FOUND -->',$field);
@@ -177,9 +203,8 @@ abstract class Renderer{
         if(file_exists($path )){
             require $path;
         }
-        else{
-            printf('<!-- DISPLAY %s NOT FOUND -->',$display);
-        }
+        
+        return sprintf('<!-- display_%s -->',$display);
     }
     /**
      * @return \CODERS\Framework\Views\Renderer
@@ -206,54 +231,9 @@ abstract class Renderer{
         return $this;
     }
     /**
-     * @param string $layout
-     * @param string $context
-     * @return \CODERS\Framework\Views\Renderer Instancia para chaining
-     */
-    public function setLayout( $layout = 'default' , $context = 'main' , $title = '' ){
-        
-        $this->_layout = $layout;
-        
-        $this->_context = $context;
-        
-        return $this;
-    }
-    /**
      * @return \CODERS\Framework\IModel Modelo de datos
      */
     protected function getModel(){ return $this->_model; }
-    /**
-     * @return string
-     */
-    protected function getContext(){ return $this->_context; }
-    /**
-     * @return string
-     */
-    protected function getTitle(){ return $this->_title; }
-
-    /**
-     * Retorna la ruta URI del layout de la vista seleccionada o devuelve nulo si no existe
-     * @param string $layout
-     * @return URI path
-     */
-    protected final function getLayout( ){
-        
-        $app = \CodersApp::instance($this->_appName);
-        
-        $path = sprintf('%s/%s/views/layouts/%s.layout.php',
-                $app->appPath(),
-                is_admin() ? 'admin' : 'public',
-                $this->_layout);
-        
-        return $path;
-    }
-    /**
-     * @return URL Url de desconexión de la sesión de WP
-     */
-    public static final function renderWordPressLogOut(){
-        return wp_logout_url( site_url() );
-    }
-    
     /**
      * 
      * @param \CodersApp $app
@@ -282,6 +262,7 @@ abstract class Renderer{
         
         return FALSE;
     }
+
     public static final function createCalendar(){
         
     }
