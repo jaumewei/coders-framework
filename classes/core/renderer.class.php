@@ -290,12 +290,12 @@ abstract class Renderer{
             }
         }
 
-        $path = sprintf('%s/%s/views/%s.view.php',
+        $path = sprintf('%s/%s/templates/%s.template.php',
                 $app->appPath(),
                 $admin ? 'admin' : 'public',
                 $template);
         
-        $class = sprintf('\CODERS\Framework\Views\%sView', \CodersApp::classify($template));
+        $class = sprintf('\CODERS\Framework\Views\%sTemplate', \CodersApp::classify($template));
         
         if(file_exists($path)){
             

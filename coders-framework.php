@@ -147,6 +147,34 @@ abstract class CodersApp{
                 plugin_dir_url(__FILE__) );
     }
     /**
+     * 
+     */
+    private static final function registerManager(){
+        
+        $instances = self::$_instance;
+        
+        add_action( 'admin_menu', function() use ( $instances ){
+
+            add_menu_page(
+                __('Coders Framework','coders_framework'),
+                __('Coders Framework','coders_framework'),
+                'administrator',
+                'coders-framework-manager',
+                function() use ( $instances ){
+
+                    if( count( $instances )){
+                        foreach( $instances as $ins ){
+
+                            var_dump($ins);
+                        }
+                    }
+                    else{
+                        print __('No applications detected','coders_framework');
+                    }
+                }, 'dashicons-schedule', 51 );
+        },100000);
+    }
+    /**
      * Preload all core and instance components
      */
     private static final function importComponents( array $components ){
@@ -337,6 +365,64 @@ abstract class CodersApp{
         return class_exists('\CODERS\Framework\Controller') ?
                 \CODERS\Framework\Controller::create( $this, $controller, $admin ) :
                 FALSE;
+    }
+    /**
+     * @param string $template
+     * @return \CODERS\Framework\Views\DocumentRender | boolean
+     */
+    public function createTemplate( $template ){
+        
+        if(class_exists('\CODERS\Framework\Views\DocumentRender')){
+
+            $path = sprintf('%s/%s/templates/%s.template.php',
+                    $this->appPath(),
+                    is_admin() ? 'admin' : 'public',
+                    $template);
+
+            $class = sprintf('\CODERS\Framework\Views\%sTemplate', self::classify($template));
+
+            if(file_exists($path)){
+
+                require $path;
+
+                if(class_exists($class)
+                        && is_subclass_of($class, \CODERS\Framework\Views\DocumentRender::class)){
+
+                    return new $class( );
+                }
+            }
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @param string $view
+     * @return \CODERS\Framework\Views\ViewRender | boolean
+     */
+    public function createView( $view ){
+        
+        if(class_exists('\CODERS\Framework\Views\ViewRender')){
+
+            $path = sprintf('%s/%s/views/%s.view.php',
+                    $this->appPath(),
+                    is_admin() ? 'admin' : 'public',
+                    $view);
+
+            $class = sprintf('\CODERS\Framework\Views\%sView', self::classify($view));
+
+            if(file_exists($path)){
+
+                require $path;
+
+                if(class_exists($class)
+                        && is_subclass_of($class, \CODERS\Framework\Views\ViewRender::class)){
+
+                    return new $class( );
+                }
+            }
+        }
+        
+        return FALSE;
     }
     /**
      * @param string $model
@@ -737,6 +823,8 @@ abstract class CodersApp{
             define('CODERS_FRAMEWORK_BASE',__DIR__);
             //register all core components
             self::importComponents( self::$_setup );
+            //register the management options
+            self::registerManager();
         }
         
         if( strlen($app) && !isset( self::$_instance[$app] ) ){
