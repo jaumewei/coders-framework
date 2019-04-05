@@ -101,7 +101,7 @@ abstract class CodersApp{
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
         //load all instance classes
-        $this->importComponents( $this->_components );
+        $this->importComponents( $this->_components , strval($this));
         //hook entrypoint and initialize app
         $this->__hook()->__init();
     }
@@ -176,20 +176,27 @@ abstract class CodersApp{
     }
     /**
      * Preload all core and instance components
+     * @param array $components
+     * @param string $app
      */
-    private static final function importComponents( array $components ){
+    private static final function importComponents( array $components , $app = '' ){
         foreach( $components as $type => $list ){
             foreach( $list as $member ){
+                //load basic classes
+                $base_path = self::componentPath($member, $type );
+                //load extended classes
+                $app_path = self::componentPath($member, $type ,$app );
                 
-                $path = self::componentPath($member, $type);
-
-                if( $path !== FALSE && file_exists($path)){
+                if( $base_path !== FALSE && file_exists($base_path) ){
                     
-                    require_once $path;
-                        
-                    //$class = self::componentClass($member, $type);
-                    //if( $class !== FALSE ){
-                    //}
+                    require_once $base_path;
+                }
+                elseif( $app_path !== FALSE && file_exists($app_path)){
+                    
+                    require_once $app_path;
+                }
+                else{
+                    //die
                 }
             }
         }
@@ -680,32 +687,36 @@ abstract class CodersApp{
      * @param int $type
      * @return String | boolean
      */
-    protected static final function componentPath( $component , $type = self::TYPE_MODELS ){
+    protected static final function componentPath( $component , $type = self::TYPE_MODELS , $app = '' ){
 
+        $path = sprintf('%s/classes', strlen($app) ?
+                $app :
+                CODERS_FRAMEWORK_BASE);
+        
         switch( $type ){
             case self::TYPE_INTERFACES:
-                return sprintf('%s/classes/interfaces/%s.interface.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/interfaces/%s.interface.php',
+                        $path,
                         self::nominalize($component));
             case self::TYPE_CORE:
-                return sprintf('%s/classes/core/%s.class.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/core/%s.class.php',
+                        $path,
                         self::nominalize($component));
             case self::TYPE_PROVIDERS:
-                return sprintf('%s/classes/providers/%s.provider.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/providers/%s.provider.php',
+                        $path,
                         self::nominalize($component));
             case self::TYPE_SERVICES:
-                return sprintf('%s/classes/services/%s.interface.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/services/%s.interface.php',
+                        $path,
                         self::nominalize($component));
             case self::TYPE_MODELS:
-                return sprintf('%s/classes/models/%s.model.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/models/%s.model.php',
+                        $path,
                         self::nominalize($component));
             case self::TYPE_EXTENSIONS:
-                return sprintf('%s/classes/plugins/%s.plugin.php',
-                        CODERS_FRAMEWORK_BASE,
+                return sprintf('%s/plugins/%s.plugin.php',
+                        $path,
                         self::nominalize($component));
         }
             
