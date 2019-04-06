@@ -283,24 +283,19 @@ abstract class Renderer{
         if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
 
             require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
-            
-            if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
-
-                return FALSE;
-            }
         }
 
-        $path = sprintf('%s/%s/templates/%s.template.php',
+        $path = sprintf('%s/%s/views/%s.document.php',
                 $app->appPath(),
                 $admin ? 'admin' : 'public',
                 $template);
         
-        $class = sprintf('\CODERS\Framework\Views\%sTemplate', \CodersApp::classify($template));
+        $class = sprintf('\CODERS\Framework\Views\%sDocument', \CodersApp::classify($template));
         
         if(file_exists($path)){
             
             require $path;
-            
+
             if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Views\DocumentRender::class)){
                 
                 return new $class( $app );

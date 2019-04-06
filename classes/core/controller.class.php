@@ -48,16 +48,13 @@ abstract class Controller extends Component{
      */
     protected function renderer( $view = 'main' ){
        
-        if( $this->importRenderer() ){
+        $app = \CodersApp::current();
 
-            $app = \CodersApp::current();
+        if ($app !== FALSE) {
 
-            if( $app !== FALSE ){
-
-                return \CODERS\Framework\Views\Renderer::createDocument($app, $view , is_admin( ) );
-            }
+            return $app->createDocument();
         }
-        
+
         return FALSE;
     }
     /**

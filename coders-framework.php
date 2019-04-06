@@ -19,7 +19,7 @@ abstract class CodersApp{
     const TYPE_PROVIDERS = 200;
     const TYPE_SERVICES = 300;
     const TYPE_MODELS = 400;
-    const TYPE_EXTENSIONS = 500;
+    const TYPE_PLUGINS = 500;
     
     const DEFAULT_EP = 'default';
     
@@ -40,7 +40,7 @@ abstract class CodersApp{
      * CORE COMPONENT DEFINITION
      * @var array
      */
-    private static $_setup = [
+    private static $_framework = [
         self::TYPE_INTERFACES => [
             'service',
             'plugin',
@@ -62,20 +62,22 @@ abstract class CodersApp{
      * INSTANCE COMPONENTS
      * @var array
      */
-    private $_components = [
-        self::TYPE_PROVIDERS => [
-            
-        ],
-        self::TYPE_SERVICES => [
-            
-        ],
-        self::TYPE_MODELS => [
-            
-        ],
-        self::TYPE_EXTENSIONS => [
-            
-        ],
-    ];
+    private $_components = array(
+        self::TYPE_PROVIDERS => [ ],
+        self::TYPE_SERVICES => [ ],
+        self::TYPE_MODELS => [ ],
+        self::TYPE_PLUGINS => [ ],
+    );
+    /**
+     * Application custom components and logics
+     * @var array
+     */
+    private $_extensions = array(
+        self::TYPE_PROVIDERS => [ ],
+        self::TYPE_SERVICES => [ ],
+        self::TYPE_MODELS => [ ],
+        self::TYPE_PLUGINS => [ ],
+    );
     /**
      * Reference to CMS Functions (Wordress or Joomla)
      * @var \CODERS\Framework\Cms
@@ -101,7 +103,9 @@ abstract class CodersApp{
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
         //load all instance classes
-        $this->importComponents( $this->_components , strval($this));
+        $this->importComponents( $this->_components );
+        //load all custom extensions
+        $this->importComponents( $this->_extensions , strval($this) );
         //hook entrypoint and initialize app
         $this->__hook()->__init();
     }
@@ -182,21 +186,12 @@ abstract class CodersApp{
     private static final function importComponents( array $components , $app = '' ){
         foreach( $components as $type => $list ){
             foreach( $list as $member ){
-                //load basic classes
-                $base_path = self::componentPath($member, $type );
                 //load extended classes
-                $app_path = self::componentPath($member, $type ,$app );
+                $path = self::componentPath($member, $type ,$app );
                 
-                if( $base_path !== FALSE && file_exists($base_path) ){
+                if( $path !== FALSE && file_exists($path)){
                     
-                    require_once $base_path;
-                }
-                elseif( $app_path !== FALSE && file_exists($app_path)){
-                    
-                    require_once $app_path;
-                }
-                else{
-                    //die
+                    require_once $path;
                 }
             }
         }
@@ -374,33 +369,14 @@ abstract class CodersApp{
                 FALSE;
     }
     /**
-     * @param string $template
+     * @param string $theme
      * @return \CODERS\Framework\Views\DocumentRender | boolean
      */
-    public function createTemplate( $template ){
+    public function createDocument( $theme = 'main' ){
         
-        if(class_exists('\CODERS\Framework\Views\DocumentRender')){
-
-            $path = sprintf('%s/%s/templates/%s.template.php',
-                    $this->appPath(),
-                    is_admin() ? 'admin' : 'public',
-                    $template);
-
-            $class = sprintf('\CODERS\Framework\Views\%sTemplate', self::classify($template));
-
-            if(file_exists($path)){
-
-                require $path;
-
-                if(class_exists($class)
-                        && is_subclass_of($class, \CODERS\Framework\Views\DocumentRender::class)){
-
-                    return new $class( );
-                }
-            }
-        }
-        
-        return FALSE;
+        return (class_exists('\CODERS\Framework\Views\Renderer'))?
+            \CODERS\Framework\Views\Renderer::createDocument($this, $theme, is_admin()) :
+            FALSE;
     }
     /**
      * @param string $view
@@ -585,12 +561,19 @@ abstract class CodersApp{
      * Registra un componente del framework
      * @param string $component
      * @param int $type
+     * @param boolean $isExtension
      * @return \CodersApp
      */
-    protected function register( $component , $type = self::TYPE_MODELS ){
+    protected function register( $component , $type = self::TYPE_MODELS , $isExtension = FALSE ){
         
         if( $type > self::TYPE_CORE ){
-            if(array_key_exists($type, $this->_components)
+            if( $isExtension ){
+                if(array_key_exists($type, $this->_extensions)
+                    && !in_array( $component ,$this->_extensions[$type]) ){
+                    $this->_extensions[ $type ][] = $component;
+                }
+            }
+            elseif(array_key_exists($type, $this->_components)
                     && !in_array( $component ,$this->_components[$type]) ){
                 $this->_components[ $type ][] = $component;
             }
@@ -675,7 +658,7 @@ abstract class CodersApp{
                 return sprintf('\CODERS\Framework\Services\%s', self::classify($component));
             case self::TYPE_MODELS:
                 return sprintf('\CODERS\Framework\Models\%sModel', self::classify($component));
-            case self::TYPE_EXTENSIONS:
+            case self::TYPE_PLUGINS:
                 return sprintf('\CODERS\Framework\Plugins\%sPlugin', self::classify($component));
         }
         
@@ -687,10 +670,10 @@ abstract class CodersApp{
      * @param int $type
      * @return String | boolean
      */
-    protected static final function componentPath( $component , $type = self::TYPE_MODELS , $app = '' ){
+    private static final function componentPath( $component , $type = self::TYPE_MODELS , $application = '' ){
 
-        $path = sprintf('%s/classes', strlen($app) ?
-                $app :
+        $path = sprintf('%s/classes', strlen($application) ?
+                ABSPATH .'/wp-content/plugins/'. $application :
                 CODERS_FRAMEWORK_BASE);
         
         switch( $type ){
@@ -714,7 +697,7 @@ abstract class CodersApp{
                 return sprintf('%s/models/%s.model.php',
                         $path,
                         self::nominalize($component));
-            case self::TYPE_EXTENSIONS:
+            case self::TYPE_PLUGINS:
                 return sprintf('%s/plugins/%s.plugin.php',
                         $path,
                         self::nominalize($component));
@@ -833,7 +816,7 @@ abstract class CodersApp{
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
             //register all core components
-            self::importComponents( self::$_setup );
+            self::importComponents( self::$_framework );
             //register the management options
             self::registerManager();
         }
