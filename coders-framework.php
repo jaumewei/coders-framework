@@ -175,7 +175,7 @@ abstract class CodersApp{
                     else{
                         print __('No applications detected','coders_framework');
                     }
-                }, 'dashicons-schedule', 51 );
+                }, 'dashicons-grid-view', 51 );
         },100000);
     }
     /**
