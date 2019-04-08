@@ -28,23 +28,43 @@ defined('ABSPATH') or die;
      */
     private $_metas = array();
     /**
+     * @var array List all body classes here
+     */
+    private $_classes = array();
+    /**
      * Layout and context to display the view
      * @var string
      */
     private $_layout,$_context,$_title = '';
-
-    protected function __construct() {
+    /**
+     * @param \CodersApp $app
+     */
+    protected function __construct( \CodersApp $app ) {
         
-        //parent::__construct($app);
-
         $this->__registerAssets( );
+        
+        $this->registerClass( array( $app->endPointName(),'app-key-'.$app->endPointKey()) );
+    }
+    /**
+     * 
+     * @param string $name
+     * @return string|html
+     */
+    public function __get($name) {
+        
+        if( $name === 'display_logo' ){
+            
+            return $this->renderLogo();
+        }
+        else{
+            return parent::__get($name);
+        }
     }
     /**
      * Inicializa las dependencias del componente
-     * @param string $hook
      * @return \CODERS\Framework\Views\Renderer
      */
-    protected final function __registerAssets( $hook = 'wp_enqueue_scripts' ){
+    protected final function __registerAssets(  ){
 
         $metas = $this->_metas;
         $links = $this->_links;
@@ -53,7 +73,7 @@ defined('ABSPATH') or die;
         //public metas and linnks
         if (!is_admin() && class_exists('\CODERS\Framework\Views\HTML')) {
 
-            add_action($hook, function() use( $metas, $links ) {
+            add_action('wp_head', function() use( $metas, $links ) {
 
                 foreach ($metas as $meta_id => $atts) {
 
@@ -63,12 +83,13 @@ defined('ABSPATH') or die;
                 foreach ($links as $link_id => $atts) {
 
                     print \CODERS\Framework\Views\HTML::link(
-                                    $atts['href'], $atts['type'], array_merge($atts, array('id' => $link_id)));
+                                    $atts['href'], $atts['type'], 
+                                    array_merge($atts, array('id' => $link_id)));
                 }
             });
         }
         //styles
-        add_action($hook, function() use( $styles ) {
+        add_action( is_admin() ? 'admin_enqueue_scripts' : 'wp_enqueue_scripts', function() use( $styles ) {
 
             foreach ($styles as $style_id => $url) {
 
@@ -76,7 +97,7 @@ defined('ABSPATH') or die;
             }
         });
         //Scripts
-        add_action($hook, function() use( $scripts ) {
+        add_action( is_admin() ? 'admin_enqueue_scripts' : 'wp_enqueue_scripts' , function() use( $scripts ) {
 
             foreach ($scripts as $script_id => $content) {
 
@@ -89,6 +110,33 @@ defined('ABSPATH') or die;
             }
         });
 
+        return $this;
+    }
+    /**
+     * 
+     * @param string $input
+     * @return boolean
+     */
+    protected function containsUrl( $input ){
+        
+        return preg_match('/^(http|https):\/\//',$input) > 0;
+    }
+    /**
+     * @param string $classes
+     * @return \CODERS\Framework\Views\DocumentRender
+     */
+    protected function registerClass( $classes ){
+        
+        if(!is_array($classes)){
+            $classes = explode(' ', $classes);
+        }
+        
+        foreach( $classes as $cls ){
+            if( !in_array($cls, $this->_classes)){
+                $this->_classes[] = $cls;
+            }
+        }
+        
         return $this;
     }
     /**
@@ -140,7 +188,7 @@ defined('ABSPATH') or die;
 
             if( !isset( $this->_styles[ $style_id ] ) ){
 
-                if( !self::containsUrl($style_url) ){
+                if( !$this->containsUrl($style_url) ){
 
                     $style_url = $this->getLocalStyleUrl($style_url);
                 }
@@ -168,7 +216,7 @@ defined('ABSPATH') or die;
         
         if( !isset( $this->_scripts[ $script_id ] ) ){
             
-            if( !self::containsUrl($script_url) ){
+            if( !$this->containsUrl($script_url) ){
                 
                 $script_url = $this->getLocalScriptUrl($script_url);
             }
@@ -206,11 +254,25 @@ defined('ABSPATH') or die;
         return $this->registerStyle( $font_id, $font_url );
     }
     /**
+     * 
+     * @return string
+     */
+    protected function renderLogo(){
+        
+        //métodos de retorno del bloque como texto html
+        return function_exists('get_custom_logo') ? get_custom_logo() :
+                sprintf('<a class="theme-logo" href="%s" target="_self">%s</a>',
+                    get_site_url(),
+                    get_bloginfo('name'));
+    }
+    /**
      * @return \CODERS\Framework\Views\DocumentRenderer
      */
     protected function renderHeader(){
         
         wp_head();
+        
+        printf('<body class="%s">' , implode(' ', $this->mergeBodyClasses()));
         
         return $this;
     }
@@ -222,16 +284,32 @@ defined('ABSPATH') or die;
         
         wp_footer();
         
+        printf('</body>');
+        
         return $this;
     }
     /**
-     * 
+     * @return array
+     */
+    protected function mergeBodyClasses(){
+        
+        $classes = get_body_class();
+
+        foreach( $this->_classes as $cls ){
+            if( !in_array($cls, $classes)){
+                $classes[] = $cls;
+            }
+        }
+        
+        return $classes;
+    }
+    /**
      * @return \CODERS\Framework\Views\DocumentRenderer
      */
     protected function renderContent(){
         
         $layout = $this->getLayout();
-
+        
         if(file_exists($layout)){
 
             require $layout;

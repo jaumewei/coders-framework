@@ -13,9 +13,10 @@
  * @author Jaume Llopis <jaume@mnkcoder.com>
  ******************************************************************************/
 abstract class CodersApp{
-    
+    //COMPONENTS LOADED THROUGH THE FRAMEWORK SETUP
     const TYPE_INTERFACES = 0;
     const TYPE_CORE = 100;
+    //COMPONENTS LOADED THROUGH THE INSTANCE SETUP
     const TYPE_PROVIDERS = 200;
     const TYPE_SERVICES = 300;
     const TYPE_MODELS = 400;
@@ -780,27 +781,48 @@ abstract class CodersApp{
         return implode('', $output);
     }
     /**
-     * Creates a setup tool to activate/deactivate applications
-     * @param string $app
-     * @param string $key
-     * @return \CODERS\Framework\Installer
+     * Preload installer if required
+     * @return boolean
      */
-    public static final function installer( $app , $key = '' ){
+    private static final function preloadInstaller(){
         
-        $path = sprintf('%s/classes/core/installer.class.php',CODERS_FRAMEWORK_BASE);
+        $class = '\CODERS\Framework\Installer';
         
-        if(file_exists($path)){
+        if( !class_exists($class) ){
 
-            require_once $path;
-            
-            if(class_exists('\CODERS\Framework\Installer')){
-                return new \CODERS\Framework\Installer(
-                        $app,
-                        strlen($key) ? $key : self::appKey($app));
+            $path = sprintf('%s/classes/core/installer.class.php',CODERS_FRAMEWORK_BASE);
+
+            if(file_exists($path)){
+
+                require_once $path;
             }
         }
         
-        return NULL;
+        return class_exists('\CODERS\Framework\Installer');
+    }
+    /**
+     * Creates a setup tool to activate/deactivate applications
+     * @param string $dir
+     * @param string $key
+     * @return \CODERS\Framework\Installer
+     */
+    public static final function installer( $dir , $key = '' ){
+        
+        $node = explode('/', preg_replace('/\\\\/', '/', $dir));
+        
+        $app = $node[ count( $node ) - 1 ];
+        
+        if(strlen($key) ){
+            
+            $key = self::appKey($app);
+        }
+
+        if( self::preloadInstaller( ) ){
+            
+            return \CODERS\Framework\Installer::create($app,$key);
+        }
+        
+        return FALSE;
     }
     /**
      * Inicialización
