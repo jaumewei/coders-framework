@@ -80,6 +80,13 @@ abstract class CodersApp{
         self::TYPE_PLUGINS => [ ],
     );
     /**
+     *
+     * @var \CODERS\Framework\Service[]
+     */
+    private $_services = array(
+        //register service contexts here
+    );
+    /**
      * Reference to CMS Functions (Wordress or Joomla)
      * @var \CODERS\Framework\Cms
      */
@@ -104,11 +111,11 @@ abstract class CodersApp{
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
         //load all instance classes
-        $this->importComponents( $this->_components );
+        //$this->importComponents( $this->_components );
         //load all custom extensions
-        $this->importComponents( $this->_extensions , strval($this) );
+        //$this->importComponents( $this->_extensions , strval($this) );
         //hook entrypoint and initialize app
-        $this->__hook()->__init();
+        $this->bindCMS()->__init();
     }
     /**
      * @return string
@@ -271,9 +278,9 @@ abstract class CodersApp{
      * Cargar gestor de hooks
      * @return \CodersApp
      */
-    private final function __hook(){
+    private final function bindCMS(){
 
-        if(class_exists('\CODERS\Framework\Cms')){
+        if( is_null($this->_system) && class_exists('\CODERS\Framework\Cms')){
     
             $this->_system = new \CODERS\Framework\Cms( $this );
         }
@@ -283,9 +290,34 @@ abstract class CodersApp{
     /**
      * @return boolean
      */
-    public final function hasHooks(){
+    private final function captureInstance() {
+
+        if (strlen(self::$_current) === 0) {
+            
+            //RESERVE THIS APP TO THE CURRENT INSTANCE
+            self::$_current = strval($this);
+            //load all instance required classes
+            $this->importComponents( $this->_components );
+            //load all application extensions
+            $this->importComponents( $this->_extensions , strval($this) );
+            
+            return TRUE;
+        }
         
-        return !is_null($this->_system);
+        return FALSE;
+    }
+    /**
+     * @param string $context
+     * @return \CodersApp
+     */
+    protected function executeServices( $context = '' ){
+        
+        foreach( $this->_services as $svc ){
+            
+            $svc->dispatch();
+        }
+        
+        return $this;
     }
     /**
      * @return \CODERS\Framework\Cms
@@ -312,29 +344,26 @@ abstract class CodersApp{
         
         try{
 
-            if( strlen( self::$_current ) === 0 ){
-                //RESERVE THIS APP TO THE CURRENT INSTANCE
-                self::$_current = strval($this);
-                
+            if( $this->captureInstance() ){
+
                 if( class_exists( '\CODERS\Framework\Request' )
                         && class_exists( '\CODERS\Framework\Controller' ) ){
                     
                     //set the current application token
                     $request = \CODERS\Framework\Request::import( $this );
                     
-                    $isAdmin = $this->_system->isAdmin();
-                    
                     if( $request !== FALSE ){
                             
-                        $context = \CODERS\Framework\Controller::create(
-                                $this->endPointName(),
-                                $request->context( ),
-                                $isAdmin);
+                        $isAdmin = $this->_system->isAdmin();
+                    
+                        $controller = \CODERS\Framework\Controller::create( $request, $isAdmin);
                         
-                        if( !is_null($context)){
+                        if( !is_null($controller)){
 
-                            if( $context->__execute( $request ) ){
+                            if( $controller->__execute( $request ) ){
 
+                                $this->executeServices();
+                                
                                 return TRUE;
                             }
                         }

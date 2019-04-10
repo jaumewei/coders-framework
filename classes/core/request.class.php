@@ -16,7 +16,7 @@ class Request{
     //tipo de evento de contexto de la aplicación para cargar el módulo apropiado
     const EVENT_CONTEXT = '_context';
 
-    private $_ep;
+    private $_endPoint;
     private $_epk;
     
     private $_input = [];
@@ -31,7 +31,7 @@ class Request{
      */
     private function __construct( \CodersApp $app , array $input = array( ) ) {
         
-        $this->_ep = $app->endPointName();
+        $this->_endPoint = $app->endPointName();
         
         $this->_epk = $app->endPointKey();
         
@@ -191,7 +191,7 @@ class Request{
             }
 
             return setcookie(
-                    self::attachPrefix($cookie,$this->_ep), $value,
+                    self::attachPrefix($cookie,$this->_endPoint), $value,
                     time() + ( $time  * 60) );
         }
 
@@ -270,7 +270,19 @@ class Request{
      * @return string
      */
     public final function endPoint(){
-        return $this->_ep;
+        return $this->_endPoint;
+    }
+    /**
+     * @return string
+     */
+    public final function endPointKey(){
+        return $this->_epk;
+    }
+    /**
+     * @return \CodersApp
+     */
+    public final function getInstance(){
+        return \CodersApp::instance( $this->_endPoint);
     }
     /**
      * @return boolean

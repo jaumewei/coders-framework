@@ -107,23 +107,21 @@ abstract class Controller extends Component{
      */
     abstract protected function default_action( Request $request );
     /**
-     * Carga un controlador. Retorna un controlador de error si no se ha encontrado el deseado
-     * @param string $app Controlador a cargar
-     * @param string $context 
+     * @param \CODERS\Framework\Request $R
      * @param boolean $admin
      * @return \CODERS\Framework\Controller | boolean
      */
-    public static final function create( $app , $context , $admin = FALSE ){
+    public static final function create( Request  $R, $admin = FALSE ){
         
-        $instance = \CodersApp::instance($app);
+        $instance = $R->getInstance();
         
         if( $instance !== FALSE ){
 
             $path = sprintf('%s/%s/controllers/%s.controller.php', $instance->appPath(),
                     //select administrator or public module
-                    $admin ? 'admin' : 'public' , $context);
+                    $admin ? 'admin' : 'public' , $R->context());
             
-            $class = sprintf('\CODERS\Framework\Controllers\%sController',$context);
+            $class = sprintf('\CODERS\Framework\Controllers\%sController',$R->context());
             
             if(file_exists($path)){
                 
