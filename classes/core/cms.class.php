@@ -39,7 +39,13 @@ final class Cms{
      * @var string
      */
     private $_EPK;
-
+    /**
+     * @var \CODERS\Framework\Views\AdminPage[]
+     */
+    private $_adminOptions = array(
+        //register here admin setup
+    );
+    
     /**
      * 
      */
@@ -135,8 +141,23 @@ final class Cms{
      * Hook para la página de administración del plugin
      * @return \CODERS\Framework\Cms
      */
-    private final function hookAdmin(){
+    protected function hookAdmin(){
 
+        $options = $this->_adminOptions;
+        
+        add_action( 'admin_menu', function() use( $options ){
+            foreach( $options as $item ){
+                //each item is a Page setup class
+                add_menu_page(
+                    $item->getPageTitle(),
+                    $item->getMenuTitle(),
+                    $item->getCapabilities(),
+                    $item->getName(),
+                    array($item,'action'),
+                    $item->getIcon(),
+                    $item->getPosition() );
+            }
+        }, 10000 );
         
         return $this;
     }
@@ -160,6 +181,11 @@ final class Cms{
         }
         
         return $this;
+    }
+    
+    protected final function registerAdminPage( $option ){
+        
+        
     }
     /**
      * List all available langguates in the CMS

@@ -110,10 +110,8 @@ abstract class CodersApp{
         $this->_EPN = strval($this);
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
-        //load all instance classes
+        //load all instance required classes and setup
         //$this->importComponents( $this->_components );
-        //load all custom extensions
-        //$this->importComponents( $this->_extensions , strval($this) );
         //hook entrypoint and initialize app
         $this->bindCMS()->__init();
     }
@@ -162,29 +160,37 @@ abstract class CodersApp{
      * 
      */
     private static final function registerManager(){
-        
-        $instances = self::$_instance;
-        
-        add_action( 'admin_menu', function() use ( $instances ){
 
-            add_menu_page(
-                __('Coders Framework','coders_framework'),
-                __('Coders Framework','coders_framework'),
-                'administrator',
-                'coders-framework-manager',
-                function() use ( $instances ){
+        add_action( 'init' , function(){
+            
+            add_action( 'admin_menu', function(){
 
-                    if( count( $instances )){
-                        foreach( $instances as $ins ){
-
-                            var_dump($ins);
+                add_menu_page(
+                    __('Coders Framework','coders_framework'),
+                    __('Coders Framework','coders_framework'),
+                    'administrator',
+                    'coders-framework-manager',
+                    function(){
+                        
+                        $instances = \CodersApp::listInstances();
+                    
+                        if( count( $instances )){
+                            printf('<ul>');
+                            foreach( $instances as $ins ){
+                                $instance = \CodersApp::instance($ins);
+                                printf('<li><strong>%s</strong> ( %s components)</li>',
+                                        $ins ,
+                                        $instance !== FALSE ? $instance->countComponents() : 0 );
+                            }
+                            printf('</ul>');
                         }
-                    }
-                    else{
-                        print __('No applications detected','coders_framework');
-                    }
-                }, 'dashicons-grid-view', 51 );
-        },100000);
+                        else{
+                            print __('No applications detected','coders_framework');
+                        }
+                    }, 'dashicons-grid-view', 51 );
+            },100000);
+            
+        });
     }
     /**
      * Preload all core and instance components
@@ -288,25 +294,6 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * @return boolean
-     */
-    private final function captureInstance() {
-
-        if (strlen(self::$_current) === 0) {
-            
-            //RESERVE THIS APP TO THE CURRENT INSTANCE
-            self::$_current = strval($this);
-            //load all instance required classes
-            $this->importComponents( $this->_components );
-            //load all application extensions
-            $this->importComponents( $this->_extensions , strval($this) );
-            
-            return TRUE;
-        }
-        
-        return FALSE;
-    }
-    /**
      * @param string $context
      * @return \CodersApp
      */
@@ -338,52 +325,71 @@ abstract class CodersApp{
         return FALSE;
     }
     /**
+     * 
+     * @return \CODERS\Framework\Request | boolean
+     */
+    private function captureRequest(){
+        
+        if (strlen(self::$_current) === 0) {
+            
+            //RESERVE THIS APP TO THE CURRENT INSTANCE
+            self::$_current = strval($this);
+            //load all instance required classes and setup
+            //$this->importComponents( $this->_components );
+            //load runtime extensions
+            $this->importComponents( $this->_extensions , strval($this) );
+            
+            if( class_exists( '\CODERS\Framework\Request' ) ){
+           
+                return \CODERS\Framework\Request::import( $this );
+            }
+        }
+        
+        return FALSE;
+    }
+    /**
      * @return boolean
      */
     public function response( ){
         
         try{
+            
+            if( class_exists( '\CODERS\Framework\Controller' ) ){
 
-            if( $this->captureInstance() ){
+                $request = $this->captureRequest();
 
-                if( class_exists( '\CODERS\Framework\Request' )
-                        && class_exists( '\CODERS\Framework\Controller' ) ){
-                    
-                    //set the current application token
-                    $request = \CODERS\Framework\Request::import( $this );
-                    
-                    if( $request !== FALSE ){
-                            
-                        $isAdmin = $this->_system->isAdmin();
-                    
-                        $controller = \CODERS\Framework\Controller::create( $request, $isAdmin);
-                        
-                        if( !is_null($controller)){
+                if( $request !== FALSE ){
 
-                            if( $controller->__execute( $request ) ){
+                    $isAdmin = $this->_system->isAdmin();
 
-                                $this->executeServices();
-                                
-                                return TRUE;
-                            }
-                        }
-                        else{
-                            //throw
+                    $controller = \CODERS\Framework\Controller::create( $request, $isAdmin);
+
+                    if( !is_null($controller)){
+
+                        if( $controller->__execute( $request ) ){
+
+                            $this->executeServices();
+
+                            return TRUE;
                         }
                     }
                     else{
-                        //throw
+                        //throw bad controller response
+                        throw new Exception('ERROR_BAD_CONTROLLER_RESPONSE');
                     }
                 }
                 else{
-                    //throw
+                    //throw bad requesst response
+                    throw new Exception('ERROR_BAD_REQUEST_RESPONSE');
                 }
             }
             else{
-                //
+                //throw master controller error response
+                throw new Exception('ERROR_MISSING_MASTER_CONTROLLER_RESPONSE');
             }
-        } catch (Exception $ex) {
-            die($ex->getMessage());
+        }
+        catch (Exception $ex) {
+            print $ex->getMessage();
         }
 
         return FALSE;
@@ -404,8 +410,10 @@ abstract class CodersApp{
      */
     public function createDocument( $theme = 'main' ){
         
+        $admin = $this->_system->isAdmin();
+        
         return (class_exists('\CODERS\Framework\Views\Renderer'))?
-            \CODERS\Framework\Views\Renderer::createDocument($this, $theme, is_admin()) :
+            \CODERS\Framework\Views\Renderer::createDocument($this, $theme, $admin ) :
             FALSE;
     }
     /**
@@ -564,6 +572,23 @@ abstract class CodersApp{
             }
         }
         return '';*/
+    }
+    /**
+     * @return int
+     */
+    public final function countComponents(){
+       
+        $count = 0;
+        
+        foreach( $this->_components as $list ){
+            $count += count($list);
+        }
+        
+        foreach( $this->_extensions as $list ){
+            $count += count($list);
+        }
+        
+        return $count;
     }
     /**
      * @param string $option
