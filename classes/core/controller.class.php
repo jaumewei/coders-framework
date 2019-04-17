@@ -111,7 +111,7 @@ abstract class Controller extends Component{
      * @param boolean $admin
      * @return \CODERS\Framework\Controller | boolean
      */
-    public static final function create( Request  $R, $admin = FALSE ){
+    public static function create( Request  $R, $admin = FALSE ){
         
         $instance = $R->getInstance();
         

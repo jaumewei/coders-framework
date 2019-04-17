@@ -22,6 +22,13 @@ abstract class Component{
         return $class[ count( $class ) - 1 ];
     }
     /**
+     * @return array
+     */
+    public function __settings(){
+
+        return $this->_settings;
+    }
+    /**
      * @return string
      */
     public function __class(){

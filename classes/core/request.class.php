@@ -347,6 +347,21 @@ class Request{
 
         return new Request( $app , self::filterInput(array_merge($get,$post), $app->endPointKey() ) );
     }
+    /**
+     * @return \CODERS\Framework\Request
+     */
+    public static final function framework( ){
+        
+        $get = filter_input_array(INPUT_GET);
+        
+        $post = filter_input_array(INPUT_GET);
+
+        if(is_null($get)){ $get = array(); }
+        
+        if(is_null($post)){ $post = array(); }
+
+        return new Request( 'root', self::filterInput(array_merge($get,$post), 'coders' ) );
+    }
 }
 
 

@@ -8,6 +8,7 @@
  * Author URI: 
  * License: GPLv2 or later
  * Text Domain: coders_framework
+ * Domain Path: lang
  * Class: CodersApp
  * 
  * @author Jaume Llopis <jaume@mnkcoder.com>
@@ -23,6 +24,10 @@ abstract class CodersApp{
     const TYPE_PLUGINS = 500;
     
     const DEFAULT_EP = 'default';
+    /**
+     * @var string Base Dir storage for repository setup
+     */
+    const ROOT_PATH = 'coders_root_path';
     
     /**
      * Instances must bestored within an array, they're up to be used both in
@@ -160,7 +165,7 @@ abstract class CodersApp{
      * 
      */
     private static final function registerManager(){
-
+        
         add_action( 'init' , function(){
             
             add_action( 'admin_menu', function(){
@@ -171,22 +176,21 @@ abstract class CodersApp{
                     'administrator',
                     'coders-framework-manager',
                     function(){
-                        
-                        $instances = \CodersApp::listInstances();
                     
-                        if( count( $instances )){
-                            printf('<ul>');
-                            foreach( $instances as $ins ){
-                                $instance = \CodersApp::instance($ins);
-                                printf('<li><strong>%s</strong> ( %s components)</li>',
-                                        $ins ,
-                                        $instance !== FALSE ? $instance->countComponents() : 0 );
-                            }
-                            printf('</ul>');
+                        $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
+                        
+                        if(file_exists($controller_path)){
+                            
+                            require_once $controller_path;
+                            
+                            $C = new \CODERS\Framework\Controllers\Framework();
+
+                            $C->execute() or die('#');
                         }
                         else{
-                            print __('No applications detected','coders_framework');
+                            die( $controller_path);
                         }
+
                     }, 'dashicons-grid-view', 51 );
             },100000);
             
@@ -264,21 +268,6 @@ abstract class CodersApp{
         }
         
         return $endpoint;
-    }
-    /**
-     * Esto irá mejor en el renderizador del sistema
-     * @param string $view
-     */
-    public static final function redirect_template( $view = self::DEFAULT_EP ){
-        
-        $path = sprintf('%s/html/%s.template.php',__DIR__,$view);
-
-        if(file_exists($path)){
-            require $path;
-        }
-        else{
-            printf('<!-- TEMPLATE_NOT_FOUND[%s] -->',$view);
-        }
     }
     /**
      * Cargar gestor de hooks
@@ -761,6 +750,13 @@ abstract class CodersApp{
         return FALSE;
     }
     /**
+     * @return array
+     */
+    public static final function pluginInfo( ){
+        
+        return get_plugin_data(__FILE__);
+    }
+    /**
      * Inicialización
      * Cada llamada a esta instancia se realiza solo en el contexto de la
      * petición del usuario sobre una única aplicacion. No es necesario
@@ -784,6 +780,21 @@ abstract class CodersApp{
         return strlen( self::$_current ) && isset( self::$_instance[self::$_current]) ?
             self::$_instance[ self::$_current ] :
             FALSE;
+    }
+    /**
+     * @param string $app
+     * @return string
+     */
+    public final function repoPath(){
+        
+        $root = get_option( self::ROOT_PATH , '' );
+        
+        if(strlen($root)){
+
+            return sprintf('%s/%s', $root, strlen($this) );
+        }
+        
+        return '';
     }
     /**
      * @return array

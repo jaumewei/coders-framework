@@ -40,12 +40,18 @@ final class Cms{
      */
     private $_EPK;
     /**
-     * @var \CODERS\Framework\Views\AdminPage[]
+     * @var array
      */
     private $_adminOptions = array(
         //register here admin setup
     );
-    
+    /**
+     *
+     * @var \CODERS\Framework\Models\PostModel[] 
+     */
+    private $_postTypes = array(
+        
+    );
     /**
      * 
      */
@@ -56,11 +62,13 @@ final class Cms{
         $this->_EPK = $app->endPointKey();
         
         //administración
-        $this->hookAdmin()
+        $this->hookAdminMenu()
                 //ruta publica permalink/GET
                 ->hookEndPoint()
                 //redirección publica
                 ->hookResponse()
+                //register post types
+                ->hookPostTypes()
                 //personalizaciones
                 ->hookCustom();
     }
@@ -141,24 +149,46 @@ final class Cms{
      * Hook para la página de administración del plugin
      * @return \CODERS\Framework\Cms
      */
-    protected function hookAdmin(){
+    private function hookAdminMenu(){
 
+        $app = $this->_EP;
+        
         $options = $this->_adminOptions;
         
-        add_action( 'admin_menu', function() use( $options ){
-            foreach( $options as $item ){
+        add_action( 'admin_menu', function() use( $app , $options){
+            
+            foreach( $options as $item => $content ){
                 //each item is a Page setup class
                 add_menu_page(
-                    $item->getPageTitle(),
-                    $item->getMenuTitle(),
-                    $item->getCapabilities(),
-                    $item->getName(),
-                    array($item,'action'),
-                    $item->getIcon(),
-                    $item->getPosition() );
+                    $content['page'],
+                    $content['menu'],
+                    $content['capabilities'],
+                    $item,
+                    function() use( $app ){
+                        //capture and initialize each instance by it's name
+                        $instance = \CodersApp::instance($app);
+                        
+                        if( FALSE !== $instance ){
+
+                            $instance->response();
+                        }
+                    },
+                    $content['icon'],
+                    $content['position'] );
             }
+            
         }, 10000 );
         
+        return $this;
+    }
+    /**
+     * Hook para la página de administración del plugin
+     * @return \CODERS\Framework\Cms
+     */
+    private function hookPostTypes(){
+        foreach( $this->_postTypes as $post ){
+            register_post_type( $post->type(), $post->definition());
+        }
         return $this;
     }
     /**
@@ -182,11 +212,36 @@ final class Cms{
         
         return $this;
     }
-    
-    protected final function registerAdminPage( $option ){
+    /**
+     * @param string $option
+     * @param string $menu
+     * @param string $title
+     * @param string $icon
+     * @return \CODERS\Framework\Cms
+     */
+    public final function addAdminPage( $option , $menu , $title , $icon , $capabilities = 'administrator' , $position = 50 ){
         
+        if( !isset( $this->_adminOptions[$option])){
+            $this->_adminOptions[$option] = array(
+                'menu' => $menu,
+                'page' => $title,
+                'icon' => $icon,
+                'capabilities' => $capabilities,
+                'position' => $position,
+            );
+        }
         
+        return $this;
     }
+    /**
+     * 
+     * @return \CODERS\Framework\Cms
+     */
+    public final function addPostType(  ){
+        
+        return $this;
+    }
+
     /**
      * List all available langguates in the CMS
      * @return array
@@ -202,6 +257,12 @@ final class Cms{
         }
 
         return $translations;
+    }
+    /**
+     * @return array
+     */
+    public final function listAdminOptions(){
+        return $this->_adminOptions;
     }
     /**
      * 
