@@ -25,34 +25,17 @@ abstract class Controller extends Component{
 
     }
     /**
-     * @return boolean
-     */
-    private final function importRenderer(){
-        
-        $renderer = '\CODERS\Framework\Views\Renderer';
-        
-        if( class_exists($renderer)){
-            
-            return TRUE;
-        }
-        else{
-
-            require_once(sprintf('%s/classes/core/renderer.class.php',CODERS_FRAMEWORK_BASE));
-            
-            return class_exists($renderer);
-        }
-    }
-    /**
      * @param string $view
+     * @param boolean $admin
      * @return \CODERS\Framework\Views\Renderer | boolean
      */
-    protected function renderer( $view = 'main' ){
+    protected function renderer( $view = 'public.main' ){
        
         $app = \CodersApp::current();
 
         if ($app !== FALSE) {
-
-            return $app->createDocument();
+            
+            return $app->createDocument( $view );
         }
 
         return FALSE;
@@ -117,7 +100,7 @@ abstract class Controller extends Component{
         
         if( $instance !== FALSE ){
 
-            $path = sprintf('%s/%s/controllers/%s.controller.php', $instance->appPath(),
+            $path = sprintf('%s/modules/%s/controllers/%s.controller.php', $instance->appPath(),
                     //select administrator or public module
                     $admin ? 'admin' : 'public' , $R->context());
             

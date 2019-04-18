@@ -394,15 +394,13 @@ abstract class CodersApp{
                 FALSE;
     }
     /**
-     * @param string $theme
+     * @param string $view
      * @return \CODERS\Framework\Views\DocumentRender | boolean
      */
-    public function createDocument( $theme = 'main' ){
-        
-        $admin = $this->_system->isAdmin();
+    public function createDocument( $view = 'public.main' ){
         
         return (class_exists('\CODERS\Framework\Views\Renderer'))?
-            \CODERS\Framework\Views\Renderer::createDocument($this, $theme, $admin ) :
+            \CODERS\Framework\Views\Renderer::createDocument( $this, $view ) :
             FALSE;
     }
     /**

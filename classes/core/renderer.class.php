@@ -241,7 +241,7 @@ abstract class Renderer{
      * @param boolean $admin
      * @return \CODERS\Framework\Views\Renderer | boolean
      */
-    public static final function create( \CodersApp $app , $template , $admin ){
+    /*public static final function create( \CodersApp $app , $template , $admin ){
         
         $path = sprintf('%s/%s/views/%s.view.php',
                 $app->appPath(),
@@ -261,7 +261,7 @@ abstract class Renderer{
         }
         
         return FALSE;
-    }
+    }*/
 
     public static final function createCalendar(){
         
@@ -274,23 +274,31 @@ abstract class Renderer{
     }
     /**
      * @param \CodersApp $app
-     * @param string $template
+     * @param string $view
      * @param boolean $admin
      * @return boolean|\CODERS\Framework\Views\DocumentRender
      */
-    public static final function createDocument(\CodersApp $app , $template , $admin = FALSE ){
+    public static final function createDocument(\CodersApp $app , $view = 'public.main' ){
         
         if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
 
             require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
         }
 
-        $path = sprintf('%s/%s/views/%s.document.php',
-                $app->appPath(),
-                $admin ? 'admin' : 'public',
-                $template);
+        if( strpos($view, '.')  === FALSE ){
+
+            $view = 'public.' . $view;
+        }
+
+        $route = explode('.', $view);
         
-        $class = sprintf('\CODERS\Framework\Views\%sDocument', \CodersApp::classify($template));
+        if( $route[ 0 ] !== 'public' && $route[ 0 ] !== 'admin' ){
+            $route[ 0 ] = 'public';
+        }
+
+        $path = sprintf('%s/modules/%s/views/%s.document.php', $app->appPath(), $route[ 0 ], $route[ 1 ]);
+        
+        $class = sprintf('\CODERS\Framework\Views\%sDocument', \CodersApp::classify($route[1]));
         
         if(file_exists($path)){
             
@@ -300,6 +308,12 @@ abstract class Renderer{
                 
                 return new $class( $app );
             }
+            else{
+                throw new \Exception($class);
+            }
+        }
+        else{
+            throw new \Exception($path);
         }
         
         return FALSE;

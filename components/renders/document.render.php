@@ -336,11 +336,15 @@ defined('ABSPATH') or die;
         
         $app = \CodersApp::current();
         
+        $layout = strpos($this->_layout,'.') !== FALSE ?
+                explode('.', $this->_layout) :
+                array( 'public' , $this->_layout );
+         
         if( $app !== FALSE ){
-            return sprintf('%s/%s/views/layouts/%s.layout.php',
+            return sprintf('%s/modules/%s/views/layouts/%s.layout.php',
                     $app->appPath(),
-                    is_admin() ? 'admin' : 'public',
-                    $this->_layout);
+                    $layout[0],
+                    $layout[1]);
         }
         
         return FALSE;
@@ -359,9 +363,9 @@ defined('ABSPATH') or die;
      * @param string $title
      * @return \CODERS\Framework\Views\DocumentRender
      */
-    public function setLayout( $layout = 'default' , $context = 'main' , $title = '' ){
+    public function setLayout( $layout = 'public.default' , $context = 'main' , $title = '' ){
         
-        $this->_layout = $layout;
+        $this->_layout = strpos($layout, '.') === FALSE ? 'public.'. $layout : $layout;
         
         $this->_context = $context;
         
