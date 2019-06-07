@@ -124,6 +124,13 @@ abstract class FormModel extends \CODERS\Framework\Dictionary implements \CODERS
         return (method_exists($this, $callback)) ? $this->$callback( ) : $default;
     }
     /**
+     * @param string $var
+     * @return boolean
+     */
+    public function has($var) {
+        return $this->hasField($var);
+    }
+    /**
      * Publica el diccionario de datos del formulario
      * @return array
      */

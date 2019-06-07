@@ -21,6 +21,18 @@ abstract class Installer{
         $this->_name = $name;
     }
     /**
+     * @return string
+     */
+    protected final function getKey(){
+        return $this->_key;
+    }
+    /**
+     * @return string
+     */
+    protected final function getName(){
+        return $this->_name;
+    }
+    /**
      * Register a message to show up in activation/deactivation header
      * @param string $message
      * @return \CODERS\Framework\Installer

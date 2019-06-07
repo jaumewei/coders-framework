@@ -130,7 +130,12 @@ class ParametersModel implements \CODERS\Framework\IModel{
     public function has($param){
         return isset($this->_parameters[$param]);
     }
-
+    /**
+     * @return array
+     */
+    public function toArray(): array {
+        return $this->listParameters();
+    }
 }
 
 

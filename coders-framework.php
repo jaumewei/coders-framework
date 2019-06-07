@@ -875,7 +875,7 @@ abstract class CodersApp{
         
         $app = $node[ count( $node ) - 1 ];
         
-        if(strlen($key) ){
+        if( strlen($key) === 0 ){
             
             $key = self::appKey($app);
         }

@@ -27,4 +27,9 @@ class Model implements \CODERS\Framework\IModel{
     public function has($var): boolean {
         
     }
+
+    public function toArray(): array {
+        
+    }
+
 }
