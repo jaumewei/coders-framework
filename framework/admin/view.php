@@ -14,10 +14,15 @@
 <?php if( count( $instances )) : ?>
 <ul class="list">
     <?php foreach( $instances as $ins ) : $instance = \CodersApp::instance($ins); ?>
-        <li class="app-box"><?php printf('<span class="app-name">%s</span><span class="">%s %s</span>',
-                $ins,
-                $instance !== FALSE ? $instance->countComponents() : 0 ,
-                __('components loaded','coders_framework') )?>
+        <li class="app-box">
+            <a href="<?php print get_site_url() ?>" target="_blank" class="app-name">
+                <?php print $ins ?>
+            </a>
+            <span class="status">
+                <?php printf('%s %s',
+                        $instance !== FALSE ? $instance->countComponents() : 0 ,
+                        __('components loaded','coders_framework')); ?>
+            </span>
         </li>
     <?php endforeach; ?>
 </ul>

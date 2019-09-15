@@ -3,6 +3,7 @@
 defined('ABSPATH') or die;
 /**
  * WordPress CMS System Adapter * 
+ * @deprecated since version 20190915
  */
 final class Cms{
     

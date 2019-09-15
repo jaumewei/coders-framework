@@ -77,12 +77,45 @@ class DB{
     /**
      * Insert values
      * @param string $table
-     * @param array $values
+     * @param array $data
      * @return int
      */
-    public function insert( $table , array $values ){
+    public function insert( $table , array $data ){
         
-        return 0;
+        $columns = array_keys($data);
+
+        $values = array();
+        
+        foreach( $data as $val ){
+            if(is_array($val)){
+                //listas
+                $values[] = sprintf("'%s'",  implode(',', $val));
+            }
+            elseif(is_numeric($val)){
+                //numerico
+                $values[] = $val;
+            }
+            else{
+                //texto
+                $values[] = sprintf("'%s'",$val);
+            }
+        }
+        
+        $sql_insert = sprintf('INSERT INTO `%s` (%s) VALUES (%s)',
+                $this->getTable($table),
+                implode(',', $columns),
+                implode(',', $values));
+        
+        $result = $this->_wpdb->query($sql_insert);
+        
+        if( $result === false ){
+
+            $this->checkErrors();
+            
+            return 0;
+        }
+        
+        return $result;
     }
     /**
      * Update/Insert values

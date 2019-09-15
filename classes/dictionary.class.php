@@ -5,7 +5,7 @@ defined('ABSPATH') or die;
 /**
  * Descriptor de tipos de datos
  * 
- * @author Jaume Llopis
+ * @author Coder01
  */
 abstract class Dictionary {
     

@@ -13,6 +13,10 @@ abstract class Controller extends Component{
      * @var int
      */
     private $_redirections = 0;
+    /**
+     * @var string
+     */
+    private $_parent = null;
     
     //private $_appName;
     
@@ -50,12 +54,12 @@ abstract class Controller extends Component{
     
     /**
      * Ejecuta el controlador
-     * @param \CODERS\Framework\Request $request
+     * @param \CODERS\Framework\Request|NULL $request
      * @return bool
      */
-    public function __execute( Request $request ){
+    public function __execute( Request $request = NULL ){
         
-        $action = sprintf('%s_action', $request->action());
+        $action = sprintf('%s_action', !is_null($request) ? $request->action() : 'default' );
         
         if(method_exists($this, $action)){
             
@@ -88,7 +92,7 @@ abstract class Controller extends Component{
     /**
      * Acción por defecto del controlador
      */
-    abstract protected function default_action( Request $request );
+    abstract protected function default_action( Request $request = NULL );
     /**
      * @param \CODERS\Framework\Request $R
      * @param boolean $admin
@@ -119,6 +123,36 @@ abstract class Controller extends Component{
         return FALSE;
     }
     /**
+     * Initialize a controller instance for the admin menu setup
+     * @param \CodersApp $instance
+     * @return boolean|\CODERS\Framework\Controller
+     */
+    public static final function registerMenu( \CodersApp $instance , $menu , $parent = null ){
+
+        if( $instance->isAdmin() ){
+
+            $path = sprintf('%s/modules/%s/controllers/%s.controller.php',
+                    $instance->appPath(),
+                    //select administrator or public module
+                    'admin',
+                    $menu );
+            
+            $class = sprintf('\CODERS\Framework\Controllers\%sController', $menu );
+
+            if (file_exists($path)) {
+
+                require_once $path;
+
+                if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
+
+                    return new $class( $instance , $parent );
+                }
+            }
+        }
+
+        return FALSE;
+    }
+    /**
      * Redirige un controlador a otro (mucho ojo a las redirecciones, máximo 3)
      * @param \\CODERS\Framework\Request $request
      * @return \TripManController
@@ -129,6 +163,38 @@ abstract class Controller extends Component{
         }
         return $this;
     }
+    /**
+     * @return string
+     */
+    public function getPageTitle(){ return __('Page Title','coders_framework'); }
+    /**
+     * @return string
+     */
+    public function getMenuTitle(){ return __('Menu Title','coders_framework'); }
+    /**
+     * @return string
+     */
+    public function getName(){ return strval($this); }
+    /**
+     * @return string
+     */
+    public function getParent(){ return $this->_parent; }
+    /**
+     * @return boolean
+     */
+    public function hasParent(){ return !is_null($this->_parent) && strlen($this->_parent); }
+    /**
+     * @return array
+     */
+    public function getCapabilities(){ return 'administrator'; }
+    /**
+     * @return string
+     */
+    public function getIcon(){ return 'dashicons-grid-view'; }
+    /**
+     * @return int
+     */
+    public function getPosition(){ return 50; }
 }
 
 

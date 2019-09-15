@@ -4,14 +4,14 @@
  * Plugin URI: https://coderstheme.org
  * Description: Framework Prototype
  * Version: 1.0.0
- * Author: Jaume Llopis
+ * Author: Coder01
  * Author URI: 
  * License: GPLv2 or later
  * Text Domain: coders_framework
  * Domain Path: lang
  * Class: CodersApp
  * 
- * @author Jaume Llopis <jaume@mnkcoder.com>
+ * @author Coder01 <coder01@mnkcoder.com>
  ******************************************************************************/
 abstract class CodersApp{
     //COMPONENTS LOADED THROUGH THE FRAMEWORK SETUP
@@ -41,7 +41,6 @@ abstract class CodersApp{
      * @var string
      */
     private static $_current = '';
-    
     /**
      * CORE COMPONENT DEFINITION
      * @var array
@@ -93,9 +92,17 @@ abstract class CodersApp{
     );
     /**
      * Reference to CMS Functions (Wordress or Joomla)
-     * @var \CODERS\Framework\Cms
+     * @var \CodersApp
      */
-    private $_system = null;
+    //private $_system = null;
+    /**
+     * @var \CODERS\Framework\Controller[]
+     */
+    private $_adminOptions = array();
+    /**
+     * @var \CODERS\Framework\Models\PostModel[] 
+     */
+    private $_postTypes = array();
     /**
      * End point key
      * @var string
@@ -114,11 +121,22 @@ abstract class CodersApp{
         //end point name
         $this->_EPN = strval($this);
         //end point key
-        $this->_EPK = strlen($key) > 3 ? $key : self::appKey($this->_EPN);
+        $this->_EPK = strlen($key) > 3 ? $key : self::createAppKey($this->_EPN);
         //load all instance required classes and setup
         //$this->importComponents( $this->_components );
         //hook entrypoint and initialize app
-        $this->bindCMS()->__init();
+        //$this->bindCMS()->__init();
+        
+        //administración
+        $this->hookAdminMenu()
+                //ruta publica permalink/GET
+                ->hookEndPoint()
+                //redirección publica
+                ->hookResponse()
+                //register post types
+                ->hookPostTypes()
+                //personalizaciones
+                ->hookCustom();
     }
     /**
      * @return string
@@ -165,20 +183,20 @@ abstract class CodersApp{
      * 
      */
     private static final function registerManager(){
-        
-        add_action( 'init' , function(){
-            
-            add_action( 'admin_menu', function(){
 
-                add_menu_page(
+        add_action( 'init' , function(){
+
+            add_action( 'admin_menu', function(){
+                //add_menu_page(
+                add_submenu_page(
+                    'options-general.php',
                     __('Coders Framework','coders_framework'),
                     __('Coders Framework','coders_framework'),
-                    'administrator',
-                    'coders-framework-manager',
+                    'administrator','coders-framework-manager',
                     function(){
-                    
+
                         $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
-                        
+
                         if(file_exists($controller_path)){
                             
                             require_once $controller_path;
@@ -190,11 +208,58 @@ abstract class CodersApp{
                         else{
                             die( $controller_path);
                         }
-
-                    }, 'dashicons-grid-view', 51 );
+                    }, 51 );
             },100000);
-            
         });
+    }
+    /**
+     * @param string $option
+     * @param string $controller
+     * @param string $title
+     * @param string $icon
+     * @return \CodersApp
+     */
+    protected final function registerAdminPage( $option , $parent = null ){
+        
+        $controller = \CODERS\Framework\Controller::registerMenu($this, $option, $parent );
+        
+        if( !isset( $this->_adminOptions[$option]) && $controller !== FALSE ){
+
+            $this->_adminOptions[$option] = $controller;
+        }
+        
+        return $this;
+    }
+    /**
+     * 
+     * @return \CodersApp
+     */
+    protected final function registerPostType(  ){
+        
+        return $this;
+    }
+    /**
+     * List all available langguates in the CMS
+     * @return array
+     */
+    protected final function listLanguages(){
+        
+        $translations = array( );
+        
+        $locale = wp_get_installed_translations('core');
+        
+        foreach (array_keys($locale['default']) as $lang) {
+            $translations[] = $lang;
+        }
+
+        return $translations;
+    }
+    /**
+     * @return \CODERS\Framework\Controller[]
+     */
+    public final function listAdminOptions(){
+
+        return $this->_adminOptions;
     }
     /**
      * Preload all core and instance components
@@ -213,6 +278,140 @@ abstract class CodersApp{
                 }
             }
         }
+    }
+    /**
+     * Hooks the application endpoint response, bypassing the requested route through
+     * the framework control
+     * @return \CodersApp
+     */
+    private final function hookResponse(){
+        
+        $instance = $this;
+            
+        /* Handle template redirect according the template being queried. */
+        add_action( 'template_redirect', function() use( $instance ){
+
+            if( $instance !== FALSE ){
+                //capture the output to dispatch in the response
+                $endpoint = $instance->endPoint( $instance->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
+                //use this to validate the current locale endpoint translation
+                $endpointLocale = $instance->endPoint( $endpoint , TRUE );
+                //check both permalink and page template
+                if ( \CodersApp::queryRoute( $endpointLocale )  ) {
+
+                    /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
+                    global $wp_query;
+                    //blow up 404 errors here
+                    $wp_query->set('is_404', FALSE);
+                    //and execute the response
+                    $instance->response( $endpoint );
+                    //then go
+                    exit;
+                }
+            }
+        } );
+        
+        return $this;
+    }
+    /**
+     * Redirect End Point URL
+     * @return \CodersApp
+     */
+    private final function hookEndPoint(){
+
+        $instance = $this;
+        
+        add_action( 'init' , function() use($instance){
+
+            global $wp, $wp_rewrite;
+            
+            if( $instance !== FALSE ){
+                //import the regiestered locale's endpoint from the settinsg
+                $endpoint = $instance->endPoint($instance->getOption(
+                        'endpoint' ,
+                        \CodersApp::DEFAULT_EP ) , TRUE );
+                
+                //now let wordpress do it's stuff with the query router
+                $wp->add_query_var( 'template' );   
+
+                add_rewrite_endpoint( $endpoint , EP_ROOT );
+
+                $wp_rewrite->add_rule(
+                        sprintf('^/%s/?$', $endpoint), 
+                        'index.php?template=' . $endpoint,
+                        'bottom' );
+                
+                //and rewrite
+                $wp_rewrite->flush_rules();
+            }
+        } );
+
+        return $this;
+    }
+    /**
+     * Hook para la página de administración del plugin
+     * @return \CodersApp
+     */
+    private final function hookAdminMenu(){
+
+        if( $this->isAdmin() ){
+
+            $intsance = $this;
+
+            add_action( 'admin_menu', function() use( $intsance ){
+
+                foreach( $intsance->listAdminOptions() as $item => $controller ){
+                    if( $controller->hasParent() ){
+                        add_submenu_page(
+                            $controller->getParent(),
+                            $controller->getPageTitle(),
+                            $controller->getMenuTitle(),
+                            $controller->getCapabilities(),
+                            $item,
+                            //function() use( $intsance ){ $instance->response(); },
+                            array($controller,'__execute'),
+                            $controller->getIcon( ),
+                            $controller->getPosition( ) );
+                    }
+                    else{
+                    //each item is a Page setup class
+                        add_menu_page(
+                            $controller->getPageTitle(),
+                            $controller->getMenuTitle(),
+                            $controller->getCapabilities(),
+                            $item,
+                            //function() use( $intsance ){ $instance->response(); },
+                            array($controller,'__execute'),
+                            $controller->getIcon( ),
+                            $controller->getPosition( ) );
+                    }
+                }
+
+            }, 10000 );
+        }
+        
+        return $this;
+    }
+    /**
+     * Hook para la página de administración del plugin
+     * @return \CodersApp
+     */
+    private function hookPostTypes(){
+
+        foreach( $this->_postTypes as $post ){
+
+            register_post_type( $post->type(), $post->definition());
+        }
+
+        return $this;
+    }
+    /**
+     * Cargador de hooks personalizados
+     * @return \CodersApp
+     */
+    protected function hookCustom(){
+        
+        return $this;
     }
     /**
      * Initializer
@@ -273,15 +472,15 @@ abstract class CodersApp{
      * Cargar gestor de hooks
      * @return \CodersApp
      */
-    private final function bindCMS(){
+    /*private final function bindCMS(){
 
-        if( is_null($this->_system) && class_exists('\CODERS\Framework\Cms')){
+        if( is_null($this->_system) && class_exists('\CodersApp')){
     
-            $this->_system = new \CODERS\Framework\Cms( $this );
+            $this->_system = new \CodersApp( $this );
         }
         
         return $this;
-    }
+    }*/
     /**
      * @param string $context
      * @return \CodersApp
@@ -296,12 +495,12 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * @return \CODERS\Framework\Cms
+     * @return \CodersApp
      */
-    public final function cms(){
+    /*public final function cms(){
         
         return $this->_system;
-    }
+    }*/
     /**
      * @return \CODERS\Framework\DB|boolean
      */
@@ -349,9 +548,7 @@ abstract class CodersApp{
 
                 if( $request !== FALSE ){
 
-                    $isAdmin = $this->_system->isAdmin();
-
-                    $controller = \CODERS\Framework\Controller::create( $request, $isAdmin);
+                    $controller = \CODERS\Framework\Controller::create( $request, $this->isAdmin( ) );
 
                     if( !is_null($controller)){
 
@@ -545,21 +742,7 @@ abstract class CodersApp{
     /**
      * @return string
      */
-    public final function endPointName(){
-        
-        return $this->_EPN;
-        //return strval($this);
-        //$application = strval($this);
-        //$application = self::nominalize( get_called_class() );
-        //return $application;
-        /*if(substr($application, 0,6) === 'Coders'){
-            $to = strrpos($application, 'App');
-            if( $to > 6 ){
-                return substr($application, 6, $to - 6 ) ;
-            }
-        }
-        return '';*/
-    }
+    public final function endPointName(){ return $this->_EPN; }
     /**
      * @return int
      */
@@ -639,7 +822,6 @@ abstract class CodersApp{
         return $class_name;
     }
     /**
-     * 
      * @param mixed $element
      * @return string
      */
@@ -652,7 +834,7 @@ abstract class CodersApp{
         return implode('', $output);
     }
     /**
-     * @author Jaume Llopis <jaume@mnkcoder.com>
+     * @author Coder01 <coder01@mnkcoder.com>
      * @param string $application
      * @return \CodersApp
      */
@@ -714,29 +896,29 @@ abstract class CodersApp{
      */
     private static final function componentPath( $component , $type = self::TYPE_MODELS , $application = '' ){
 
-        $path = sprintf('%s/classes', strlen($application) ?
+        $path = strlen($application) ?
                 ABSPATH .'/wp-content/plugins/'. $application :
-                CODERS_FRAMEWORK_BASE);
+                CODERS_FRAMEWORK_BASE;
         
         switch( $type ){
             case self::TYPE_INTERFACES:
-                return sprintf('%s/interfaces/%s.interface.php',
+                return sprintf('%s/classes/interfaces/%s.interface.php',
                         $path,
                         self::nominalize($component));
             case self::TYPE_CORE:
-                return sprintf('%s/core/%s.class.php',
+                return sprintf('%s/classes/%s.class.php',
                         $path,
                         self::nominalize($component));
             case self::TYPE_PROVIDERS:
-                return sprintf('%s/providers/%s.provider.php',
+                return sprintf('%s/components/providers/%s.provider.php',
                         $path,
                         self::nominalize($component));
             case self::TYPE_SERVICES:
-                return sprintf('%s/services/%s.interface.php',
+                return sprintf('%s/components/services/%s.interface.php',
                         $path,
                         self::nominalize($component));
             case self::TYPE_MODELS:
-                return sprintf('%s/models/%s.model.php',
+                return sprintf('%s/components/models/%s.model.php',
                         $path,
                         self::nominalize($component));
             case self::TYPE_PLUGINS:
@@ -762,7 +944,7 @@ abstract class CodersApp{
      * sobre este framework. Simplemente, se cargará la aplicación adecuada
      * dentro de su espacio a cada llamada requerida desde el plugin activo.
      * 
-     * @author Jaume Llopis <jaume@mnkcoder.com>
+     * @author Coder01 <coder01@mnkcoder.com>
      * @return \CodersApp|Boolean
      */
     public static final function instance( $app ){
@@ -805,14 +987,36 @@ abstract class CodersApp{
      * @return boolean
      */
     public static final function isLoaded( $instance ){
-        
+
         return array_key_exists($instance, self::$_instance);
+    }
+    /**
+     * @global type $wp
+     * @param string $endpoint
+     * @return boolean
+     */
+    public static final function queryRoute( $endpoint ){
+
+        global $wp;
+
+        $query = $wp->query_vars;
+
+        return array_key_exists($endpoint, $query) ||       //is permalink route
+                ( array_key_exists('template', $query)      //is post template
+                        && $endpoint === $query['template']);
+    }
+    /**
+     * @return boolean
+     */
+    public static final function isAdmin(){
+        
+        return is_admin();
     }
     /**
      * @param string $app
      * @return string
      */
-    private static final function appKey( $app ){
+    private static final function createAppKey( $app ){
         
         $key = explode('-', $app);
         
@@ -877,7 +1081,7 @@ abstract class CodersApp{
         
         if( strlen($key) === 0 ){
             
-            $key = self::appKey($app);
+            $key = self::createAppKey($app);
         }
 
         if( self::preloadInstaller( ) ){
@@ -889,7 +1093,7 @@ abstract class CodersApp{
     }
     /**
      * Inicialización
-     * @author Jaume Llopis <jaume@mnkcoder.com>
+     * @author Coder01 <coder01@mnkcoder.com>
      * @param string $app
      * @param string $key
      * @return boolean
