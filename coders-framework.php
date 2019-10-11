@@ -130,13 +130,13 @@ abstract class CodersApp{
         //$this->bindCMS()->__init();
         
         //administración
-        $this->hookAdminMenu()
+        $this->registerAdminOptions()
                 //ruta publica permalink/GET
-                ->hookEndPoint()
+                ->registerEndPoint()
                 //redirección publica
-                ->hookResponse()
+                ->registerResponse()
                 //register post types
-                ->hookPostTypes()
+                ->registerPostTypes()
                 //personalizaciones
                 ->hookCustom();
     }
@@ -268,7 +268,7 @@ abstract class CodersApp{
      * @param array $components
      * @param string $app
      */
-    private static final function importComponents( array $components , \CodersApp $app = NULL ){
+    private static final function registerComponents( array $components , \CodersApp $app = NULL ){
         foreach( $components as $type => $list ){
             foreach( $list as $member ){
                 //load extended classes
@@ -286,7 +286,7 @@ abstract class CodersApp{
      * the framework control
      * @return \CodersApp
      */
-    private final function hookResponse(){
+    private final function registerResponse(){
         
         $instance = $this;
             
@@ -319,7 +319,7 @@ abstract class CodersApp{
      * Redirect End Point URL
      * @return \CodersApp
      */
-    private final function hookEndPoint(){
+    private final function registerEndPoint(){
 
         $instance = $this;
         
@@ -354,7 +354,7 @@ abstract class CodersApp{
      * Hook para la página de administración del plugin
      * @return \CodersApp
      */
-    private final function hookAdminMenu(){
+    private final function registerAdminOptions(){
 
         if( $this->isAdmin() ){
 
@@ -398,7 +398,7 @@ abstract class CodersApp{
      * Hook para la página de administración del plugin
      * @return \CodersApp
      */
-    private function hookPostTypes(){
+    private function registerPostTypes(){
 
         foreach( $this->_postTypes as $post ){
 
@@ -426,12 +426,9 @@ abstract class CodersApp{
      * 
      * @return string
      */
-    protected function endPointLocale( ){
+    protected function importRoutes( ){
         
-        //default entry point is the app name
-        $default = $this->endPointName();
-
-        return array( $default => array( ) );
+        return array( $this->endPointName() => array( ) );
     }
     /**
      * @param string $endpoint (default)
@@ -451,7 +448,7 @@ abstract class CodersApp{
             $lang = get_locale();
             
             //list available endpoints
-            $eplist = $this->endPointLocale();
+            $eplist = $this->importRoutes();
             
             //var_dump($eplist);
             //var_dump($lang);
@@ -470,19 +467,6 @@ abstract class CodersApp{
         
         return $endpoint;
     }
-    /**
-     * Cargar gestor de hooks
-     * @return \CodersApp
-     */
-    /*private final function bindCMS(){
-
-        if( is_null($this->_system) && class_exists('\CodersApp')){
-    
-            $this->_system = new \CodersApp( $this );
-        }
-        
-        return $this;
-    }*/
     /**
      * @param \CODERS\Framework\Providers\Request $R
      * @return \CodersApp
@@ -567,7 +551,7 @@ abstract class CodersApp{
                 //load all instance required classes and setup
                 //$this->importComponents( $this->_components );
                 //load runtime extensions
-                self::importComponents( $this->_extensions , $this );
+                self::registerComponents( $this->_extensions , $this );
 
             }
             else{
@@ -1195,7 +1179,7 @@ abstract class CodersApp{
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
             //register all core components
-            self::importComponents( self::$_framework );
+            self::registerComponents( self::$_framework );
             //register the management options
             self::registerManager();
             
