@@ -23,6 +23,7 @@ class Request{
     //private $_post = [];
     private $_action = 'default';
     private $_context = 'main';
+    private $_ts;
     //private $_userId = 0;
     //private $_profile;
 
@@ -35,21 +36,28 @@ class Request{
         
         $this->_epk = $app->endPointKey();
         
-        $this->_input = $input;
-        
-        $this->_context = $this->get(self::EVENT_CONTEXT,'main');
-        
-        $this->_action = $this->get(self::EVENT_COMMAND,'default');
-        
-        $this->remove(self::EVENT_COMMAND)->remove(self::EVENT_CONTEXT);
+        foreach( $input as $var => $val ){
+            switch( $var ){
+                case self::EVENT_CONTEXT:
+                    $this->_context = $val;
+                    break;
+                case self::EVENT_COMMAND:
+                    $this->_action = $val;
+                    break;
+                default:
+                    $this->_input[ $var ] = $val;
+                    break;
+            }
+        }
     }
     /**
      * @return string
      */
     public function __toString() {
-        return strtolower( sprintf('%s.%s.%s.%s',
+        //return strtolower( sprintf('%s.%s.%s.%s',
+        return strtolower( sprintf('%s.%s.%s',
                 $this->_epk,
-                $this->module(),
+                //$this->module(),
                 $this->_context,
                 $this->_action) );
     }
@@ -70,39 +78,30 @@ class Request{
         return strtolower( sprintf('%s_%s',$prefix,$input) );
     }
     /**
-     * Extraer los valores GET/POST evitando conflictos con otras variables WP
      * @param string $input
-     * @return string|null
+     * @return string
      */
-    private static final function extractPrefix( $input , $prefix ){
-
-        $from = strpos($input, $prefix );
-        
-        $offset = strlen($prefix);
-
-        if( $from === 0){
-            
-            return substr($input,
-                    $offset ,
-                    strlen($input) - $offset);
-        }
-        
-        return '';
+    public final function prefix( $input ){
+        return strtolower( sprintf('%s.%s',$this->_epk, $input) );
     }
     /**
      * 
      * @param array $input
-     * @param string $prefix
      * @return array
      */
-    private static final function filterInput( array $input , $prefix ){
+    private static final function filterInput( array $input  ){
+        
         $output = [];
-        foreach( $input as $key=>$val ){
-            $in =  self::extractPrefix($key, $prefix);
-            if(strlen($in)){
-                $output[ $key ] = is_array($val) ? $val : strip_tags($val);
+        
+        foreach( $input as $key => $val ){
+        
+            $in = explode('.', $key);
+            
+            if( count( $in ) === 2 && $in[0] === $this->_epk ){
+                $output[ $key[ 1 ] ] = strip_tags($val);
             }
         }
+        
         return $output;
     }
     /**
@@ -314,7 +313,7 @@ class Request{
         }
         
         if( !is_null($data)){
-            $this->_input = self::filterInput( $data , $this->_epk );
+            $this->_input = $this->filterInput( $data );
         }
         
         return $this;
@@ -335,7 +334,7 @@ class Request{
      * @param \CodersApp $app
      * @return \CODERS\Framework\Request
      */
-    public static final function import( $app ){
+    public static final function import( \CodersApp $app ){
         
         $get = filter_input_array(INPUT_GET);
         
@@ -345,12 +344,12 @@ class Request{
         
         if(is_null($post)){ $post = array(); }
 
-        return new Request( $app , self::filterInput(array_merge($get,$post), $app->endPointKey() ) );
+        return new Request( $app , $this->filterInput( array_merge( $get , $post ) ) );
     }
     /**
      * @return \CODERS\Framework\Request
      */
-    public static final function framework( ){
+    /*public static final function framework( ){
         
         $get = filter_input_array(INPUT_GET);
         
@@ -361,7 +360,7 @@ class Request{
         if(is_null($post)){ $post = array(); }
 
         return new Request( 'root', self::filterInput(array_merge($get,$post), 'coders' ) );
-    }
+    }*/
 }
 
 

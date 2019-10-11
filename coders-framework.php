@@ -91,17 +91,6 @@ abstract class CodersApp{
         //register service contexts here
     );
     /**
-     * Reference to CMS Functions (Wordress or Joomla)
-     * @var \CodersApp
-     */
-    //private $_system = null;
-    /**
-     * @var \CODERS\Framework\Controller[]
-     */
-    private $_adminOptions = array(
-        
-    );
-    /**
      * @var \CODERS\Framework\Models\PostModel[] 
      */
     private $_postTypes = array();
@@ -130,11 +119,11 @@ abstract class CodersApp{
         //$this->bindCMS()->__init();
         
         //administración
-        $this->registerAdminOptions()
-                //ruta publica permalink/GET
-                ->registerEndPoint()
+        $this->registerEndPoint()
                 //redirección publica
                 ->registerResponse()
+                //registrar opciones del menú de administrador
+                ->registerAdminMenu()
                 //register post types
                 ->registerPostTypes()
                 //personalizaciones
@@ -178,13 +167,14 @@ abstract class CodersApp{
     public final function appURL( ){
         
         return preg_replace( '/coders-framework/',
-                $this->endPointName(),
+                //$this->endPointName(),
+                $this->endPoint(),
                 plugin_dir_url(__FILE__) );
     }
     /**
      * 
      */
-    private static final function registerManager(){
+    private static final function registerFrameworkMenu(){
 
         add_action( 'init' , function(){
 
@@ -215,24 +205,6 @@ abstract class CodersApp{
         });
     }
     /**
-     * @param string $option
-     * @param string $controller
-     * @param string $title
-     * @param string $icon
-     * @return \CodersApp
-     */
-    protected final function registerAdminPage( $option , $parent = null ){
-        
-        $controller = \CODERS\Framework\Controller::registerMenu($this, $option, $parent );
-        
-        if( !isset( $this->_adminOptions[$option]) && $controller !== FALSE ){
-
-            $this->_adminOptions[$option] = $controller;
-        }
-        
-        return $this;
-    }
-    /**
      * 
      * @return \CodersApp
      */
@@ -257,11 +229,15 @@ abstract class CodersApp{
         return $translations;
     }
     /**
+     * Register all admin controllers here
+     * as option => Controller
      * @return \CODERS\Framework\Controller[]
      */
-    public final function listAdminOptions(){
+    protected function importAdminMenu(){
 
-        return $this->_adminOptions;
+        return array(
+            //option => Controller
+        );
     }
     /**
      * Preload all core and instance components
@@ -288,25 +264,23 @@ abstract class CodersApp{
      */
     private final function registerResponse(){
         
-        $instance = $this;
+        $app = $this;
             
         /* Handle template redirect according the template being queried. */
-        add_action( 'template_redirect', function() use( $instance ){
+        add_action( 'template_redirect', function() use( $app ){
 
-            if( $instance !== FALSE ){
+            if( $app !== FALSE ){
                 //capture the output to dispatch in the response
-                $endpoint = $instance->endPoint( $instance->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
-                //use this to validate the current locale endpoint translation
-                $endpointLocale = $instance->endPoint( $endpoint , TRUE );
-                //check both permalink and page template
-                if ( \CodersApp::queryRoute( $endpointLocale )  ) {
+                $endpoint = $app->endPoint( $app->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
+                //check both permalink and page template (validate with locale)
+                if ( \CodersApp::queryRoute( $app->endPoint( $endpoint , TRUE ) )  ) {
 
                     /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                     global $wp_query;
                     //blow up 404 errors here
                     $wp_query->set('is_404', FALSE);
                     //and execute the response
-                    $instance->run( $endpoint );
+                    $app->run( $endpoint );
                     //then terminate app and wordpressresponse
                     exit;
                 }
@@ -321,17 +295,15 @@ abstract class CodersApp{
      */
     private final function registerEndPoint(){
 
-        $instance = $this;
+        $app = $this;
         
-        add_action( 'init' , function() use($instance){
+        add_action( 'init' , function() use($app){
 
             global $wp, $wp_rewrite;
             
-            if( $instance !== FALSE ){
+            if( $app !== FALSE ){
                 //import the regiestered locale's endpoint from the settinsg
-                $endpoint = $instance->endPoint($instance->getOption(
-                        'endpoint' ,
-                        \CodersApp::DEFAULT_EP ) , TRUE );
+                $endpoint = $app->endPoint($app->getOption('endpoint' ,'default' ) , TRUE );
                 
                 //now let wordpress do it's stuff with the query router
                 $wp->add_query_var( 'template' );   
@@ -354,41 +326,39 @@ abstract class CodersApp{
      * Hook para la página de administración del plugin
      * @return \CodersApp
      */
-    private final function registerAdminOptions(){
+    private final function registerAdminMenu(){
 
         if( $this->isAdmin() ){
 
-            $intsance = $this;
+            $menu = $this->importAdminMenu();
 
-            add_action( 'admin_menu', function() use( $intsance ){
-
-                foreach( $intsance->listAdminOptions() as $item => $controller ){
-                    if( $controller->hasParent() ){
+            add_action( 'admin_menu', function() use( $menu ){
+                
+                foreach ( $menu as $option => $controller) {
+                    if (strlen($controller->getParent()) ) {
                         add_submenu_page(
-                            $controller->getParent(),
-                            $controller->getPageTitle(),
-                            $controller->getMenuTitle(),
-                            $controller->getCapabilities(),
-                            $item,
-                            //function() use( $intsance ){ $instance->response(); },
-                            array($controller,'__execute'),
-                            $controller->getIcon( ),
-                            $controller->getPosition( ) );
-                    }
-                    else{
-                    //each item is a Page setup class
+                                $controller->getParent(),
+                                $controller->getPageTitle(),
+                                $controller->getMenuTitle(),
+                                $controller->getCapabilities(),
+                                $option,
+                                //function() use( $intsance ){ $instance->response(); },
+                                array($controller, '__execute'),
+                                $controller->getIcon(),
+                                $controller->getPosition());
+                    } else {
+                        //each item is a Page setup class
                         add_menu_page(
-                            $controller->getPageTitle(),
-                            $controller->getMenuTitle(),
-                            $controller->getCapabilities(),
-                            $item,
-                            //function() use( $intsance ){ $instance->response(); },
-                            array($controller,'__execute'),
-                            $controller->getIcon( ),
-                            $controller->getPosition( ) );
+                                $controller->getPageTitle(),
+                                $controller->getMenuTitle(),
+                                $controller->getCapabilities(),
+                                $option,
+                                //function() use( $intsance ){ $instance->response(); },
+                                array($controller, '__execute'),
+                                $controller->getIcon(),
+                                $controller->getPosition());
                     }
                 }
-
             }, 10000 );
         }
         
@@ -416,6 +386,13 @@ abstract class CodersApp{
         return $this;
     }
     /**
+     * @param string $value
+     * @return string
+     */
+    public final function generateId( $value = '' ){
+        return md5( uniqid(strval($this) . date('YmdHis') . $value , true) );
+    }
+    /**
      * Initializer
      */
     abstract protected function __init();
@@ -432,12 +409,12 @@ abstract class CodersApp{
     }
     /**
      * @param string $endpoint (default)
-     * @param bool $translate 
+     * @param bool $translate Return the endpoint's  locale translation if defined
      * @return string
      */
-    public final function endPoint( $endpoint = self::DEFAULT_EP , $translate = FALSE ){
+    public final function endPoint( $endpoint = 'default' , $translate = FALSE ){
         
-        if( $endpoint === self::DEFAULT_EP ){
+        if( $endpoint === 'default' ){
             //override default key to the app-name endpoint
             $endpoint = $this->endPointName();
         }
@@ -450,10 +427,6 @@ abstract class CodersApp{
             //list available endpoints
             $eplist = $this->importRoutes();
             
-            //var_dump($eplist);
-            //var_dump($lang);
-            //die($endpoint);
-
             if( array_key_exists( $endpoint , $eplist ) ){
 
                 return array_key_exists( $lang, $eplist[ $endpoint ] ) ?
@@ -464,7 +437,7 @@ abstract class CodersApp{
                 //register error in log
             }
         }
-        
+        //return  the requested end-point by default when no translation was defined
         return $endpoint;
     }
     /**
@@ -1181,7 +1154,7 @@ abstract class CodersApp{
             //register all core components
             self::registerComponents( self::$_framework );
             //register the management options
-            self::registerManager();
+            self::registerFrameworkMenu();
             
             return  TRUE;
         }

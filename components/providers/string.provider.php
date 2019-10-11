@@ -16,11 +16,6 @@ class String{
      */
     const LANGUAGE_DEFAULT = 'es_ES';
     /**
-     * Modelo de traducciones
-     * @var TripManStringProvider
-     */
-    private static $_instance = null;
-    /**
      * @var array Lista de cadenas
      */
     private $_stringData = array();
@@ -38,20 +33,13 @@ class String{
      * Hay varios strings que no pegan bien. Cuando resuelvan la traducción y
      * se revise si funciona se resuelve.
      */
-    private final function __construct( $locale ) {
+    public final function __construct( \CodersApp $app , $locale ) {
         
         $this->_lang = $locale;
         
-        $path = self::getTranslationPath( $locale );
+        $path = self::getTranslationPath( $app , $locale );
         
         $count = $this->loadStrings($path);
-        
-        if( $count > 0 ){
-            
-            /*TripManLogProvider::debug(
-                TripManStringProvider::__( '-->Registradas %s traducciones para el idioma actual', $count),
-                    $this);*/
-        }
     }
     /**
      * @return string
@@ -121,7 +109,7 @@ class String{
      * @param mixed $date
      * @return string
      */
-    public final function translateDate( $date ){
+    public final function displayDate( $date ){
         
         $time = is_numeric($date) ? $date : strtotime( $date );
         
@@ -131,8 +119,8 @@ class String{
         $year = date('Y',$time);
         
         return vsprintf( $this->translate('%s %s de %s, %s'), array(
-            $this->translateWeekDay($weekDay), $day,
-            $this->translateMonth($month), $year,
+            $this->displayWeekDay($weekDay), $day,
+            $this->displayMonth($month), $year,
         ));
     }
     /**
@@ -140,7 +128,7 @@ class String{
      * @param string $timestamp
      * @return string
      */
-    public final function translateDateTime( $timestamp ){
+    public final function displayDateTime( $timestamp ){
         
         if(is_null($timestamp)){
             $timestamp = TripManager::getTimeStamp();
@@ -156,8 +144,8 @@ class String{
         $hour = date('H:i',$time);
         
         return self::__( '%s %s de %s, %s<br/>a las %s Hs.',array(
-                $this->translateWeekDay(  $weekDay ), $day,
-                $this->translateMonth( $month ), $year,  $hour ));
+                $this->displayWeekDay(  $weekDay ), $day,
+                $this->displayMonth( $month ), $year,  $hour ));
     }
     /**
      * Muestra el día (nombde del día y número)
@@ -170,7 +158,7 @@ class String{
         $weekDay = intval(date('w',$time));
         
         return sprintf('%s, %s',
-                $this->translateWeekDay($weekDay),
+                $this->displayWeekDay($weekDay),
                 date('d',$time));
     }
     /**
@@ -178,13 +166,13 @@ class String{
      * @param string $date
      * @return string
      */
-    public final function translateDayOfMonth( $date ){
+    public final function displayMonthDay( $date ){
         
         $time = strtotime($date);
         $month = intval(date('m',$time));
         
         return sprintf('%s, %s',
-                $this->translateMonth($month),
+                $this->displayMonth($month),
                 date('d',$time));
     }
     /**
@@ -192,7 +180,7 @@ class String{
      * @param int $day
      * @return string
      */
-    public final function translateWeekDay( $day ){
+    public final function displayWeekDay( $day ){
         switch($day ){
             case 1:
                 return $this->translate('Lunes');
@@ -217,7 +205,7 @@ class String{
      * @param int $month
      * @return string
      */
-    public final function translateMonth( $month ){
+    public final function displayMonth( $month ){
         switch( $month ){
             case 1:
                 return $this->translate( 'Enero' );
@@ -259,55 +247,6 @@ class String{
         return new TripManStringProvider($locale);
     }
     /**
-     * Instancia del gestor de traducciones
-     * @return TripManStringProvider
-     */
-    public static final function instance(){
-        
-        if(is_null(self::$_instance)){
-            //crea la instancia implícitamente
-            self::$_instance = new TripManStringProvider( self::getLocale() );
-        }
-        //retorna la instancia creada
-        return self::$_instance;
-    }
-    /**
-     * Retorna el día de la fecha indicada en formato "Martes, 05"
-     * @param string $date
-     * @return string
-     */
-    public static final function displayDay( $date ){
-        
-        return self::instance()->translateDay($date);
-    }
-    /**
-     * Retorna el día de la fecha indicada en formato "Marzo, 06"
-     * @param string $date
-     * @return strin
-     */
-    public static final function displayDayOfMonth( $date ){
-        
-        return self::instance()->translateDayOfMonth($date);
-    }
-    /**
-     * Muestra la fecha en el formato local según el idioma
-     * @param string $date
-     * @return string
-     */
-    public static final function displayDate( $date ){
-        
-        return self::instance()->translateDate($date);
-    }
-    /**
-     * Muestra la fecha en el formato local según el idioma
-     * @param string $timestamp
-     * @return string
-     */
-    public static final function displayDateTime( $timestamp = null ){
-        
-        return self::instance()->translateDateTime($timestamp);
-    }
-    /**
      * Permite la traducción de la cadena en el contexto de la aplicación de la intranet
      * 
      * En esta versión la traducción nativa de WP es inútil, delegando toda la funcionalidad
@@ -317,16 +256,16 @@ class String{
      * @param mixed $data Valor o valores opcionales a inyectar dentro de la cadena
      * @return String
      */
-    public static final function __( $string , $data = null ){
+    public final function __( $string , $data = null ){
 
         if( !is_null($data) ){
             //preparar candena con valores adjuntos
             return is_array($data) ?
-                    vsprintf( self::instance()->translate($string), $data ) :
-                    sprintf( self::instance()->translate($string), $data );
+                    vsprintf( $this->translate($string), $data ) :
+                    sprintf( $this->translate($string), $data );
         }
         else{
-            return self::instance()->translate($string);
+            return $this->translate($string);
         }
     }
     /**
@@ -476,17 +415,9 @@ class String{
      * @param int $day
      * @return string
      */
-    public static final function displayWeekDay( $day ){
-        return self::instance()->translateWeekDay($day);
-    }
-    /**
-     * Días de la semana
-     * @param int $day
-     * @return string
-     */
-    public static final function displayWeekDayShort( $day ){
+    public final function displayWeekDayShort( $day ){
         
-        $weekDay = self::displayWeekDay($day);
+        $weekDay = $this->displayWeekDay($day);
         
         return substr($weekDay, 0, 3 );
     }
@@ -495,20 +426,11 @@ class String{
      * @param int $day
      * @return string
      */
-    public static final function displayWeekDayCap( $day ){
+    public final function displayWeekDayCap( $day ){
         
-        $weekDay = self::displayWeekDay($day);
+        $weekDay = $this->displayWeekDay($day);
         
         return substr($weekDay, 0, 1 );
-    }
-    /**
-     * Meses del año
-     * @param int $month
-     * @return string
-     */
-    public static final function displayMonth( $month ){
-        
-        return self::instance()->translateMonth($month);
     }
     /**
      * Muestra el idioma indicado
@@ -579,11 +501,12 @@ class String{
      * Lista los meses del año
      * @return array
      */
-    public static final function listMonths(){
+    public final function listMonths(){
+        
         $months = array();
         
         for( $m = 1 ; $m <= 12 ; $m++ ){
-            $months[$m] = self::displayMonth($m);
+            $months[$m] = $this->displayMonth($m);
         }
         
         return $months;
@@ -592,12 +515,12 @@ class String{
      * Lista los días de la semana
      * @return array
      */
-    public static final function listWeekDays(){
+    public final function listWeekDays(){
         
         $days = array();
         
         for( $d = 0 ; $d < 7 ; $d++ ){
-            $days[$d] = self::displayWeekDay($d);
+            $days[$d] = $this->displayWeekDay($d);
         }
         
         return $days;
@@ -623,36 +546,9 @@ class String{
      * de modelos y plantillas que requieran un idioma diferente al cargado actualmente en el sistema
      * @return \TripManStringProvider[]
      */
-    public static  final function listTranslations(){
+    public final function listTranslations(){
         
-        $mgrs = array( self::getLocale() => self::instance() );
-        
-        foreach( self::listLanguages() as $lang ){
-            if( $lang !== self::getLocale() ){
-                $mgrs[ $lang ] = new TripManStringProvider( $lang );
-            }
-        }
-        
-        return $mgrs;
-    }
-    /**
-     * Idioma por defecto
-     * @return string
-     */
-    public static final function getDefaultLanguage(){
-        
-        return TripManager::getOption('tripman_default_language',self::LANGUAGE_DEFAULT);
-    }
-    /**
-     * Indica si el sistema de traducciones del componente está activo, refiriéndose
-     * al parámetro tripman_post_translation
-     * 
-     * @return boolean
-     */
-    public static final function isTranslationActive(){
-            //define si se está aplicando el sistema de traducciones WPML
-            return TripManager::getOption( 'tripman_post_translation',
-                    TripManager::PLUGIN_OPTION_DISABLED ) === TripManager::PLUGIN_OPTION_ENABLED;
+        return array();
     }
     /**
      * Recorta las cadenas de texto en functión de la longitud indicada, controlando

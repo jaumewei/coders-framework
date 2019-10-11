@@ -61,11 +61,6 @@ class Log{
      */
     private $_type = self::LOG_TYPE_INFO;
     /**
-     * Perfil que ha generado el suceso
-     * @var string
-     */
-    private $_profile = TripManager::PROFILE_INVALID;
-    /**
      * 
      * @param string $message Mensaje del registro
      * @param int $type Tipo de registro
@@ -76,7 +71,7 @@ class Log{
         $this->_message = $message;
         $this->_type = $type;
         $this->_timestamp = date('YmdHis');
-        $this->_context = 'TripManager';
+        $this->_context = \CodersApp::class;
 
         if( !is_null($context)){
             if(is_object($context)){
@@ -87,14 +82,8 @@ class Log{
                 $this->_context = $context;
             }
             else{
-                $this->_context = TripManager::loaded() ?
-                        TripManager::instance()->getProfile() :
-                                'TripManager';
+                $this->_context = \CodersApp::class;
             }
-        }
-        
-        if( TripManager::loaded()){
-            $this->_profile = TripManager::instance()->getProfile();
         }
         
         self::$_logs[] = $this;
@@ -106,8 +95,8 @@ class Log{
         
         $context = !is_null($this->_context) ? $this->_context : 'log';
 
-        return sprintf('<div class="log %s-log-container %s context-%s"><i>[ %s ]</i> %s</div>',
-                TripManager::PLUGIN_NAME,$this->getType(true),
+        return sprintf('<span class="log coders-log-container %s context-%s"><i>[ %s ]</i> %s</span>',
+                $this->getType(true),
                 strtolower( $context ),
                 $context, $this->_message );
     }
@@ -116,26 +105,6 @@ class Log{
      */
     public final function getMessage( ){
         return  $this->_message;
-    }
-    /**
-     * Serializa un evento LOG en formato HTML
-     * @return HTML
-     */
-    public final function getHTML(){
-        
-        $UID = TripManRequestProvider::importRequest()->getUID();
-        $profile = TripManager::loaded() ? TripManager::instance()->getProfile() : 'TripManager';
-        //TripManRequestProvider::importRequest()->getProfile();
-        
-        $context = !is_null( $this->_context ) ?
-                    $this->_context :
-                    sprintf('%s(%s)', $profile, strval( $UID ) );
-        
-        return sprintf(
-                "<p class=\"log-type %s\">[ %s : %s ] - %s</p>\n",
-                $this->getType(true),
-                $this->getTimeStamp(true),
-                $context, $this->_message);
     }
     /**
      * @return int|String
@@ -254,7 +223,7 @@ class Log{
      */
     private static final function dumpOutputHTML( array $logData ){
         
-        $level = TripManager::getOption('tripman_log_level',self::LOG_TYPE_INFO);
+        $level = self::LOG_TYPE_INFO;
         
         foreach( $logData as $log ){
 
@@ -268,7 +237,7 @@ class Log{
      */
     private static final function dumpOutputFile( array $logData ){
         
-        $level = TripManager::getOption('tripman_log_level',self::LOG_TYPE_INFO);
+        $level = self::LOG_TYPE_INFO;
         
         $log_file = self::getLogFile();
         
@@ -291,7 +260,7 @@ class Log{
      */
     private static final function dumpOutputDb( array $logData ){
         
-        $level = TripManager::getOption('tripman_log_level',self::LOG_TYPE_INFO);
+        $level = self::LOG_TYPE_INFO;
         
         $db = new TripManDBProvider();
         

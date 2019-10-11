@@ -39,13 +39,13 @@ final class Token{
      * @param int $related_id
      * @param mixed $expiration
      */
-    public final function __construct( $related_id , $expiration = null , $profile = null ) {
+    public final function __construct( \CodersApp $app, $related_id , $expiration = null ) {
         
         $this->_ID = $related_id;
         
-        $this->_tokenId = $this->generateToken();
+        $this->_entryPoint = strval($app);
         
-        $this->_entryPoint = !is_null($profile) ? $profile : TripManager::instance()->getProfile();
+        $this->_tokenId = $app->generateId($this->_ID);
         
         if(is_null($expiration)){
             $this->_expiration = time() + 3600;
@@ -140,13 +140,6 @@ final class Token{
                 array('token_id'=>$this->_tokenId,'entry_point'=>$this->_entryPoint));
         
         return $updated > 0;
-    }
-    /**
-     * Token generado por Hash MD5 
-     * @return string
-     */
-    private final function generateToken(){
-        return md5( uniqid( TripManager::PLUGIN_NAME.TripManager::getDate().$this->_ID, true) );
     }
     /**
      * @param int $id

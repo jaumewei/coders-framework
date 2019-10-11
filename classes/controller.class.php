@@ -13,20 +13,15 @@ abstract class Controller extends Component{
      * @var int
      */
     private $_redirections = 0;
-    /**
-     * @var string
-     */
-    private $_parent = null;
     
     //private $_appName;
     
     /**
      * @param \CodersApp $app
      */
-    protected function __construct( ) {
+    protected function __construct( \CodersApp $app ) {
         
         //$this->_appName = $app->endPointName();
-
     }
     /**
      * @param string $view
@@ -129,6 +124,7 @@ abstract class Controller extends Component{
      * @param \CodersApp $app
      * @param string $controller
      * @param boolean $admin
+     * @param string $parent
      * @return \CODERS\Framework\Controller|boolean
      */
     public static final function create( \CodersApp $app , $controller , $admin = FALSE ){
@@ -153,36 +149,6 @@ abstract class Controller extends Component{
         return FALSE;
     }
     /**
-     * Initialize a controller instance for the admin menu setup
-     * @param \CodersApp $instance
-     * @return boolean|\CODERS\Framework\Controller
-     */
-    public static final function adminPage( \CodersApp $instance , $menu , $parent = null ){
-
-        if( $instance->isAdmin() ){
-
-            $path = sprintf('%s/modules/%s/controllers/%s.controller.php',
-                    $instance->appPath(),
-                    //select administrator or public module
-                    'admin',
-                    $menu );
-            
-            $class = sprintf('\CODERS\Framework\Controllers\%sController', $menu );
-
-            if (file_exists($path)) {
-
-                require_once $path;
-
-                if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
-
-                    return new $class( $instance , $parent );
-                }
-            }
-        }
-
-        return FALSE;
-    }
-    /**
      * Redirige un controlador a otro (mucho ojo a las redirecciones, máximo 3)
      * @param \\CODERS\Framework\Request $request
      * @return \TripManController
@@ -200,7 +166,7 @@ abstract class Controller extends Component{
     /**
      * @return string
      */
-    public function getMenuTitle(){ return __('Menu Title','coders_framework'); }
+    public function getOptionTitle(){ return __('Menu Title','coders_framework'); }
     /**
      * @return string
      */
@@ -208,11 +174,7 @@ abstract class Controller extends Component{
     /**
      * @return string
      */
-    public function getParent(){ return $this->_parent; }
-    /**
-     * @return boolean
-     */
-    public function hasParent(){ return !is_null($this->_parent) && strlen($this->_parent); }
+    public function getParent(){ return ''; }
     /**
      * @return array
      */
