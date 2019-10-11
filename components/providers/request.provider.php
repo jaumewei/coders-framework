@@ -547,6 +547,12 @@ class Request{
             return setcookie( $token_key , null , -3600 );
         }
     }
+    /**
+     * @return boolean
+     */
+    public static final function isAdmin(){
+        return is_admin();
+    }
 }
 
 

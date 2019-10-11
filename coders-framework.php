@@ -98,7 +98,9 @@ abstract class CodersApp{
     /**
      * @var \CODERS\Framework\Controller[]
      */
-    private $_adminOptions = array();
+    private $_adminOptions = array(
+        
+    );
     /**
      * @var \CODERS\Framework\Models\PostModel[] 
      */
@@ -266,11 +268,11 @@ abstract class CodersApp{
      * @param array $components
      * @param string $app
      */
-    private static final function importComponents( array $components , $app = '' ){
+    private static final function importComponents( array $components , \CodersApp $app = NULL ){
         foreach( $components as $type => $list ){
             foreach( $list as $member ){
                 //load extended classes
-                $path = self::componentPath($member, $type ,$app );
+                $path = self::componentPath($member, $type , !is_null( $app ) ? strval($app) : '' );
                 
                 if( $path !== FALSE && file_exists($path)){
                     
@@ -304,8 +306,8 @@ abstract class CodersApp{
                     //blow up 404 errors here
                     $wp_query->set('is_404', FALSE);
                     //and execute the response
-                    $instance->response( $endpoint );
-                    //then go
+                    $instance->run( $endpoint );
+                    //then terminate app and wordpressresponse
                     exit;
                 }
             }
@@ -482,10 +484,10 @@ abstract class CodersApp{
         return $this;
     }*/
     /**
-     * @param string $context
+     * @param \CODERS\Framework\Providers\Request $R
      * @return \CodersApp
      */
-    protected function executeServices( $context = '' ){
+    protected function runServices( \CODERS\Framework\Providers\Request $R ){
         
         foreach( $this->_services as $svc ){
             
@@ -493,6 +495,43 @@ abstract class CodersApp{
         }
         
         return $this;
+    }
+    /**
+     * 
+     * @param \CODERS\Framework\Providers\Request $R
+     * @return boolean
+     */
+    protected function runController( \CODERS\Framework\Providers\Request $R ){
+       
+        if( $R->isAdmin() ){
+            
+            if(array_key_exists($R->getContext(), $this->_adminOptions)){
+                
+                return $this->_adminOptions[ $R->getContext() ]->__execute($R);
+            }
+            else{
+                throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$R->getContext()));
+            }
+        }
+        elseif ( ( $controller = $this->createController($R->getContext()) ) !== FALSE ) {
+
+            return $controller->__execute($R);
+        }
+        else{
+            throw new Exception(sprintf('INVALID PUBLIC CONTROLLER [%s]',$R->getContext()));
+        }
+        
+        return FALSE;
+    }
+    /**
+     * @return array
+     */
+    protected function response(){
+        
+        return array(
+            'controller',
+            'services'
+        );
     }
     /**
      * @return \CodersApp
@@ -513,40 +552,67 @@ abstract class CodersApp{
         return FALSE;
     }
     /**
-     * 
-     * @return \CODERS\Framework\Request | boolean
-     */
-    private function captureRequest(){
-        
-        if (strlen(self::$_current) === 0) {
-            
-            //RESERVE THIS APP TO THE CURRENT INSTANCE
-            self::$_current = strval($this);
-            //load all instance required classes and setup
-            //$this->importComponents( $this->_components );
-            //load runtime extensions
-            $this->importComponents( $this->_extensions , strval($this) );
-            
-            if( class_exists( '\CODERS\Framework\Request' ) ){
-           
-                return \CODERS\Framework\Request::import( $this );
-            }
-        }
-        
-        return FALSE;
-    }
-    /**
      * @return boolean
      */
-    public function response( ){
+    public function run( ){
         
         try{
+            /**
+             * Load istance components
+             */
+            if (strlen(self::$_current) === 0) {
+
+                //RESERVE THIS APP TO THE CURRENT INSTANCE
+                self::$_current = strval($this);
+                //load all instance required classes and setup
+                //$this->importComponents( $this->_components );
+                //load runtime extensions
+                self::importComponents( $this->_extensions , $this );
+
+            }
+            else{
+                throw new Exception('COMPONENT_IMPORT_ERROR_RESPONSE');
+            }
             
-            if( class_exists( '\CODERS\Framework\Controller' ) ){
+            if( class_exists( '\CODERS\Framework\Request' ) ){
+                throw new Exception('BAD_REQUEST_RESPONSE');
+            }
+            /**
+             * import request
+             */
+            $request = \CODERS\Framework\Request::import( $this );
 
-                $request = $this->captureRequest();
-
-                if( $request !== FALSE ){
+            foreach( $this->response() as $call ){
+                
+                if(is_callable($call)){
+                    //call it as thefunction it is, with the instance and  the request
+                    if( ! $call( $this , $request ) ){
+                        throw new Exception(sprintf('RUNABLE ENCLOSURE ERROR %s', strval($call)));
+                        //break;
+                    }
+                }
+                else{
+                    //callit as a defined methodwithin the instance
+                    $run = sprintf('run%s',$call);
+                    
+                    if(method_exists($this, $run)){
+                        
+                        if( ! $this->$call( $request ) ){
+                            throw new Exception(sprintf('INVALID_RUNABLE_METHOD_RESPONSE [%s]', $call ));
+                        }
+                    }
+                    else{
+                        throw new Exception(sprintf('INVALID_RUNABLE_METHOD [%s]', $call ));
+                    }
+                }
+            }
+            
+            /**
+             * Execute controllers
+             */
+            /*if( $request !== FALSE ){
+                
+                if( class_exists( '\CODERS\Framework\Controller' ) ){
 
                     $controller = \CODERS\Framework\Controller::create( $request, $this->isAdmin( ) );
 
@@ -554,7 +620,7 @@ abstract class CodersApp{
 
                         if( $controller->__execute( $request ) ){
 
-                            $this->executeServices();
+                            $this->runServices( $this , $request );
 
                             return TRUE;
                         }
@@ -565,14 +631,14 @@ abstract class CodersApp{
                     }
                 }
                 else{
-                    //throw bad requesst response
-                    throw new Exception('ERROR_BAD_REQUEST_RESPONSE');
+                    //throw master controller error response
+                    throw new Exception('ERROR_MISSING_MASTER_CONTROLLER_RESPONSE');
                 }
             }
             else{
-                //throw master controller error response
-                throw new Exception('ERROR_MISSING_MASTER_CONTROLLER_RESPONSE');
-            }
+                //throw bad requesst response
+                throw new Exception('ERROR_BAD_REQUEST_RESPONSE');
+            }*/
         }
         catch (Exception $ex) {
             print $ex->getMessage();
@@ -1100,16 +1166,6 @@ abstract class CodersApp{
      */
     public static function init( $app = '' ){
         
-        if( !defined('CODERS_FRAMEWORK_BASE')){
-
-            //first instance to call
-            define('CODERS_FRAMEWORK_BASE',__DIR__);
-            //register all core components
-            self::importComponents( self::$_framework );
-            //register the management options
-            self::registerManager();
-        }
-        
         if( strlen($app) && !isset( self::$_instance[$app] ) ){
 
             try{
@@ -1130,12 +1186,30 @@ abstract class CodersApp{
         
         return FALSE;
     }
+    /**
+     * @return boolean
+     */
+    public static final function initFramework(){
+        if( !defined('CODERS_FRAMEWORK_BASE')){
+
+            //first instance to call
+            define('CODERS_FRAMEWORK_BASE',__DIR__);
+            //register all core components
+            self::importComponents( self::$_framework );
+            //register the management options
+            self::registerManager();
+            
+            return  TRUE;
+        }
+        
+        return FALSE;
+    }
 }
 
 /**
  * Inicializar aplicación
  */
-CodersApp::init();
+CodersApp::initFramework();
 
 
 

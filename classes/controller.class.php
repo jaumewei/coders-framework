@@ -94,32 +94,62 @@ abstract class Controller extends Component{
      */
     abstract protected function default_action( Request $request = NULL );
     /**
+     * @param \CodersApp $app
      * @param \CODERS\Framework\Request $R
-     * @param boolean $admin
      * @return \CODERS\Framework\Controller | boolean
      */
-    public static function create( Request  $R, $admin = FALSE ){
+    public static final function request( \CodersApp $app, Request  $R ){
         
-        $instance = $R->getInstance();
+        return self::create($app, $R->context(), $R->isAdmin());
         
-        if( $instance !== FALSE ){
+        /**
+         * @deprecated since version number
+         */
+        
+        $path = sprintf('%s/modules/%s/controllers/%s.controller.php', $app->appPath(),
+                //select administrator or public module
+                $R->isAdmin() ? 'admin' : 'public', $R->context());
 
-            $path = sprintf('%s/modules/%s/controllers/%s.controller.php', $instance->appPath(),
-                    //select administrator or public module
-                    $admin ? 'admin' : 'public' , $R->context());
-            
-            $class = sprintf('\CODERS\Framework\Controllers\%sController',$R->context());
-            
-            if(file_exists($path)){
-                
-                require_once $path;
-                
-                if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE ) ){
-                    return new $class( $instance );
-                }
+        $class = sprintf('\CODERS\Framework\Controllers\%sController', $R->context());
+
+        if (file_exists($path)) {
+
+            require_once $path;
+
+            if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
+
+                return new $class($app);
             }
         }
-        
+
+        return FALSE;
+    }
+    /**
+     * 
+     * @param \CodersApp $app
+     * @param string $controller
+     * @param boolean $admin
+     * @return \CODERS\Framework\Controller|boolean
+     */
+    public static final function create( \CodersApp $app , $controller , $admin = FALSE ){
+
+        $path = sprintf('%s/modules/%s/controllers/%s.controller.php',
+                $app->appPath(),
+                $admin ? 'admin' : 'public',
+                strtolower( $controller ) );
+
+        $class = sprintf('\CODERS\Framework\Controllers\%sController', $controller);
+
+        if (file_exists($path)) {
+
+            require_once $path;
+
+            if ( class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
+
+                return new $class($app);
+            }
+        }
+
         return FALSE;
     }
     /**
@@ -127,7 +157,7 @@ abstract class Controller extends Component{
      * @param \CodersApp $instance
      * @return boolean|\CODERS\Framework\Controller
      */
-    public static final function registerMenu( \CodersApp $instance , $menu , $parent = null ){
+    public static final function adminPage( \CodersApp $instance , $menu , $parent = null ){
 
         if( $instance->isAdmin() ){
 
