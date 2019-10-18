@@ -34,13 +34,13 @@ abstract class CodersApp{
      * frontend context or in admin/backend- which requires always some preload
      * methods to know all available installed applications.
      * 
-     * @var \CodersApp[] Singleton of Instances
+     * @var string List of registered instances
      */
-    private static $_instance = [];
+    private static $_instances = [];
     /**
      * @var string
      */
-    private static $_current = '';
+    //private static $_current = '';
     /**
      * CORE COMPONENT DEFINITION
      * @var array
@@ -55,7 +55,6 @@ abstract class CodersApp{
         self::TYPE_CORE => [
             'component',
             'db',           //wpdb helper
-            'cms',          //system CMS (Joomla/Wordpress)
             'dictionary',
             'request',      //inputs
             'controller',
@@ -144,6 +143,16 @@ abstract class CodersApp{
         return self::nominalize($class);
     }
     /**
+     * @return string
+     */
+    public static final function appRoot( $app ){
+       
+        return (array_key_exists($app, self::$_instances)) ?
+                sprintf('%s/%s/', preg_replace('/\\\\/', '/', dirname(__DIR__) ),$app) :
+                //sprintf('%s/%s/', dirname(__DIR__),$app) :
+                '' ;
+    }
+    /**
      * Ruta local de contenido de la aplicación
      * @return string
      */
@@ -178,30 +187,33 @@ abstract class CodersApp{
 
         add_action( 'init' , function(){
 
-            add_action( 'admin_menu', function(){
-                //add_menu_page(
-                add_submenu_page(
-                    'options-general.php',
-                    __('Coders Framework','coders_framework'),
-                    __('Coders Framework','coders_framework'),
-                    'administrator','coders-framework-manager',
-                    function(){
+            if(\CodersApp::isAdmin()){
 
-                        $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
+                add_action( 'admin_menu', function(){
+                    //add_menu_page(
+                    add_submenu_page(
+                        'options-general.php',
+                        __('Coders Framework','coders_framework'),
+                        __('Coders Framework','coders_framework'),
+                        'administrator','coders-framework-manager',
+                        function(){
 
-                        if(file_exists($controller_path)){
-                            
-                            require_once $controller_path;
-                            
-                            $C = new \CODERS\Framework\Controllers\Framework();
+                            $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
 
-                            $C->execute() or die('#');
-                        }
-                        else{
-                            die( $controller_path);
-                        }
-                    }, 51 );
-            },100000);
+                            if(file_exists($controller_path)){
+
+                                require_once $controller_path;
+
+                                $C = new \CODERS\Framework\Controllers\Framework();
+
+                                $C->execute() || printf('<p>INVALID_MASTERCONTROLLER_RESPONSE [%s]</p>',$controller_path);
+                            }
+                            else{
+                                printf('<p>INVALID_MASTERCONTROLLER_PATH [%s]</p>',$controller_path);
+                            }
+                        }, 51 );
+                },100000);
+            }
         });
     }
     /**
@@ -253,6 +265,9 @@ abstract class CodersApp{
                 if( $path !== FALSE && file_exists($path)){
                     
                     require_once $path;
+                }
+                else{
+                    throw new Exception( sprintf( 'INVALID_COMPONENT [%s]',$path ) );
                 }
             }
         }
@@ -335,22 +350,24 @@ abstract class CodersApp{
             add_action( 'admin_menu', function() use( $menu ){
                 
                 foreach ( $menu as $option => $controller) {
+
                     if (strlen($controller->getParent()) ) {
                         add_submenu_page(
                                 $controller->getParent(),
                                 $controller->getPageTitle(),
-                                $controller->getMenuTitle(),
+                                $controller->getOptionTitle(),
                                 $controller->getCapabilities(),
                                 $option,
                                 //function() use( $intsance ){ $instance->response(); },
                                 array($controller, '__execute'),
                                 $controller->getIcon(),
                                 $controller->getPosition());
-                    } else {
+                    }
+                    else {
                         //each item is a Page setup class
                         add_menu_page(
                                 $controller->getPageTitle(),
-                                $controller->getMenuTitle(),
+                                $controller->getOptionTitle(),
                                 $controller->getCapabilities(),
                                 $option,
                                 //function() use( $intsance ){ $instance->response(); },
@@ -441,10 +458,10 @@ abstract class CodersApp{
         return $endpoint;
     }
     /**
-     * @param \CODERS\Framework\Providers\Request $R
+     * @param \CODERS\Framework\Request $R
      * @return \CodersApp
      */
-    protected function runServices( \CODERS\Framework\Providers\Request $R ){
+    protected function runServices( \CODERS\Framework\Request $R ){
         
         foreach( $this->_services as $svc ){
             
@@ -455,10 +472,10 @@ abstract class CodersApp{
     }
     /**
      * 
-     * @param \CODERS\Framework\Providers\Request $R
+     * @param \CODERS\Framework\Request $R
      * @return boolean
      */
-    protected function runController( \CODERS\Framework\Providers\Request $R ){
+    protected function runController( \CODERS\Framework\Request $R ){
        
         if( $R->isAdmin() ){
             
@@ -470,12 +487,12 @@ abstract class CodersApp{
                 throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$R->getContext()));
             }
         }
-        elseif ( ( $controller = $this->createController($R->getContext()) ) !== FALSE ) {
+        elseif ( ( $controller = $this->createController($R->context()) ) !== FALSE ) {
 
             return $controller->__execute($R);
         }
         else{
-            throw new Exception(sprintf('INVALID PUBLIC CONTROLLER [%s]',$R->getContext()));
+            throw new Exception(sprintf('INVALID PUBLIC CONTROLLER [%s]',$R->context()));
         }
         
         return FALSE;
@@ -487,7 +504,7 @@ abstract class CodersApp{
         
         return array(
             'controller',
-            'services'
+            //'services'
         );
     }
     /**
@@ -517,21 +534,14 @@ abstract class CodersApp{
             /**
              * Load istance components
              */
-            if (strlen(self::$_current) === 0) {
-
-                //RESERVE THIS APP TO THE CURRENT INSTANCE
-                self::$_current = strval($this);
-                //load all instance required classes and setup
-                //$this->importComponents( $this->_components );
-                //load runtime extensions
-                self::registerComponents( $this->_extensions , $this );
-
-            }
-            else{
-                throw new Exception('COMPONENT_IMPORT_ERROR_RESPONSE');
-            }
+            //RESERVE THIS APP TO THE CURRENT INSTANCE
+            //self::$_current = strval($this);
+            //load all instance required classes and setup
+            //$this->importComponents( $this->_components );
+            //load runtime extensions
+            self::registerComponents( $this->_extensions , $this );
             
-            if( class_exists( '\CODERS\Framework\Request' ) ){
+            if( !class_exists( '\CODERS\Framework\Request' ) ){
                 throw new Exception('BAD_REQUEST_RESPONSE');
             }
             /**
@@ -554,8 +564,8 @@ abstract class CodersApp{
                     
                     if(method_exists($this, $run)){
                         
-                        if( ! $this->$call( $request ) ){
-                            throw new Exception(sprintf('INVALID_RUNABLE_METHOD_RESPONSE [%s]', $call ));
+                        if( ! $this->$run( $request ) ){
+                            throw new Exception(sprintf('INVALID_RUNABLE_METHOD_RESPONSE [%s]', $run ));
                         }
                     }
                     else{
@@ -563,39 +573,7 @@ abstract class CodersApp{
                     }
                 }
             }
-            
-            /**
-             * Execute controllers
-             */
-            /*if( $request !== FALSE ){
-                
-                if( class_exists( '\CODERS\Framework\Controller' ) ){
-
-                    $controller = \CODERS\Framework\Controller::create( $request, $this->isAdmin( ) );
-
-                    if( !is_null($controller)){
-
-                        if( $controller->__execute( $request ) ){
-
-                            $this->runServices( $this , $request );
-
-                            return TRUE;
-                        }
-                    }
-                    else{
-                        //throw bad controller response
-                        throw new Exception('ERROR_BAD_CONTROLLER_RESPONSE');
-                    }
-                }
-                else{
-                    //throw master controller error response
-                    throw new Exception('ERROR_MISSING_MASTER_CONTROLLER_RESPONSE');
-                }
-            }
-            else{
-                //throw bad requesst response
-                throw new Exception('ERROR_BAD_REQUEST_RESPONSE');
-            }*/
+            return TRUE;
         }
         catch (Exception $ex) {
             print $ex->getMessage();
@@ -877,11 +855,11 @@ abstract class CodersApp{
                 return new $class( );
             }
             else{
-                throw new Exception(sprintf('INVALID APPLICATION [%s]',$class) );
+                throw new Exception(sprintf('INVALID_APPLICATION [%s]',$class) );
             }
         }
         else{
-            throw new Exception(sprintf('INVALID PATH [%s]',$path) );
+            throw new Exception(sprintf('INVALID_PATH [%s]',$path) );
             //die(sprintf('INVALID PATH [%s]',$path) );
         }
         
@@ -970,20 +948,20 @@ abstract class CodersApp{
      * @author Coder01 <coder01@mnkcoder.com>
      * @return \CodersApp|Boolean
      */
-    public static final function instance( $app ){
+    /*public static final function instance( $app ){
         
         return strlen($app) && isset(self::$_instance[$app]) ? self::$_instance[ $app ] : FALSE;;
-    }
+    }*/
     /**
      * Current instance
      * @return \CodersApp | boolean
      */
-    public static final function current(){
+    /*public static final function current(){
         
         return strlen( self::$_current ) && isset( self::$_instance[self::$_current]) ?
             self::$_instance[ self::$_current ] :
             FALSE;
-    }
+    }*/
     /**
      * @param string $app
      * @return string
@@ -1003,7 +981,8 @@ abstract class CodersApp{
      * @return array
      */
     public static final function listInstances(){
-        return array_keys(self::$_instance);
+        //return array_keys(self::$_instance);
+        return self::$_instances;
     }
     /**
      * @param string $instance
@@ -1011,7 +990,8 @@ abstract class CodersApp{
      */
     public static final function isLoaded( $instance ){
 
-        return array_key_exists($instance, self::$_instance);
+        //return array_key_exists($instance, self::$_instance);
+        return in_array($instance, self::$_instances);
     }
     /**
      * @global type $wp
@@ -1121,9 +1101,9 @@ abstract class CodersApp{
      * @param string $key
      * @return boolean
      */
-    public static function init( $app = '' ){
+    public static function init( $app ){
         
-        if( strlen($app) && !isset( self::$_instance[$app] ) ){
+        if( strlen($app) && !self::isLoaded($app) ){
 
             try{
                 
@@ -1131,13 +1111,17 @@ abstract class CodersApp{
                 
                 if( !is_null($instance)){
 
-                    self::$_instance[ $app ] = $instance;
+                    //self::$_instance[ $app ] = $instance;
+                    self::$_instances[ strval($instance) ] = array(
+                        'class' => get_class($instance),
+                        'end-point' => $instance->endPointName()
+                    );
                     
                     return TRUE;
                 }
             }
             catch (Exception $ex) {
-                die($ex->getMessage());
+                printf('<p>%s</p>',$ex->getMessage());
             }
         }
         
@@ -1147,14 +1131,21 @@ abstract class CodersApp{
      * @return boolean
      */
     public static final function initFramework(){
+        
         if( !defined('CODERS_FRAMEWORK_BASE')){
 
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
-            //register all core components
-            self::registerComponents( self::$_framework );
-            //register the management options
-            self::registerFrameworkMenu();
+            
+            try{
+                //register all core components
+                self::registerComponents( self::$_framework );
+                //register the management options
+                self::registerFrameworkMenu();
+            }
+            catch (Exception $ex) {
+                printf('<p>%s</p>',$ex->getMessage());
+            }
             
             return  TRUE;
         }

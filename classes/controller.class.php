@@ -14,6 +14,8 @@ abstract class Controller extends Component{
      */
     private $_redirections = 0;
     
+    private $_appName,$_appKey;
+    
     //private $_appName;
     
     /**
@@ -21,32 +23,96 @@ abstract class Controller extends Component{
      */
     protected function __construct( \CodersApp $app ) {
         
-        //$this->_appName = $app->endPointName();
+        $this->_appName = $app->endPointName();
+        
+        $this->_appKey = $app->endPointKey();
     }
     /**
-     * @param string $view
-     * @param boolean $admin
-     * @return \CODERS\Framework\Views\Renderer | boolean
+     * @param \CODERS\Framework\Request $R
+     * @return \CODERS\Framework\FormRender
      */
-    protected function renderer( $view = 'public.main' ){
-       
-        $app = \CodersApp::current();
+    protected function displayForm( Request $R ){
+        
+        if(!class_exists('\CODERS\Framework\Views\FormRender')){
 
-        if ($app !== FALSE) {
-            
-            return $app->createDocument( $view );
+            require_once( sprintf('%s/components/renders/form.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        $view = new \CODERS\Framework\Views\FormRender( );
+        
+        return $view->setup($R->endPoint(), $R->module());
+    }
+    /**
+     * @param \CODERS\Framework\Request $R
+     * @return \CODERS\Framework\MapRender
+     */
+    protected function displayMap(Request $R ){
+
+        if(!class_exists('\CODERS\Framework\Views\MapRender')){
+
+            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        $view = new \CODERS\Framework\Views\MapRender( );
+        
+        return $view->setup($R->endPoint(), $R->module());
+    }
+    /**
+     * 
+     * @param \CODERS\Framework\Request $R
+     * @return \CODERS\Framework\CalendarRender
+     */
+    protected function displayCalendar( Request $R ){
+
+        if (!class_exists('\CODERS\Framework\Views\CalendarRender')) {
+
+            require_once( sprintf('%s/components/renders/calendar.render.php', CODERS_FRAMEWORK_BASE) );
         }
 
-        return FALSE;
+        $view = new \CODERS\Framework\Views\CalendarRender();
+        
+        return $view->setup($R->endPoint(), $R->module());
+    }
+    /**
+     * @param \CODERS\Framework\Request $R
+     * @return \CODERS\Framework\Views\Renderer | boolean
+     */
+    protected function displayView( Request $R ){
+       
+        if(!class_exists('\CODERS\Framework\Views\ViewRender')){
+
+            require_once( sprintf('%s/components/renders/view.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        $view =  new \CODERS\Framework\Views\ViewRender();
+        
+        return $view->setup($R->endPoint() , $R->module());
+    }
+    /**
+     * @param \CODERS\Framework\Request $R
+     * @return \CODERS\Framework\DocumentRender
+     */
+    protected function displayDocument( Request $R ){
+
+        if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
+
+            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        $view = new \CODERS\Framework\Views\DocumentRender();
+        
+        return $view->setup($R->endPoint(), $R->module());
     }
     /**
      * @param \CODERS\Framework\IModel $content
+     * @param array $headers
      */
-    protected function json( IModel $content ){
+    protected function json( IModel $content , array $headers = array( ) ){
+        
+        //headers
         
         json_encode( $content->toArray() );
     }
-    
     /**
      * Ejecuta el controlador
      * @param \CODERS\Framework\Request|NULL $request
@@ -187,6 +253,14 @@ abstract class Controller extends Component{
      * @return int
      */
     public function getPosition(){ return 50; }
+    /**
+     * @return string
+     */
+    public function getAppName(){ return $this->_appName; }
+    /**
+     * @return string
+     */
+    public function getAppKey(){ return $this->_appKey; }
 }
 
 

@@ -5,13 +5,7 @@ defined('ABSPATH') or die;
 /**
  * 
  */
-abstract class CalendarRenderer extends Renderer{
+class CalendarRender extends Renderer{
 
-    protected function __construct(\CodersApp $app) {
-        
-        parent::__construct($app);
 
-    }
-
-    
 }

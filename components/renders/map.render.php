@@ -5,13 +5,6 @@ defined('ABSPATH') or die;
 /**
  * 
  */
-abstract class MapRender extends Renderer{
+class MapRender extends Renderer{
 
-    protected function __construct(\CodersApp $app) {
-        
-        parent::__construct($app);
-
-    }
-
-    
 }

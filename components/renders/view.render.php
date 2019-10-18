@@ -7,8 +7,6 @@ defined('ABSPATH') or die;
  * used by widgets and shortcodes
  */
 class ViewRender extends Renderer{
-     
-    public function display(): Renderer {
-        
-    }
+
+    
 }

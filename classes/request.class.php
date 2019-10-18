@@ -36,6 +36,8 @@ class Request{
         
         $this->_epk = $app->endPointKey();
         
+        $this->_ts = time();
+        
         foreach( $input as $var => $val ){
             switch( $var ){
                 case self::EVENT_CONTEXT:
@@ -87,9 +89,10 @@ class Request{
     /**
      * 
      * @param array $input
+     * @param string $epk
      * @return array
      */
-    private static final function filterInput( array $input  ){
+    private static final function filterInput( array $input , $epk ){
         
         $output = [];
         
@@ -97,7 +100,7 @@ class Request{
         
             $in = explode('.', $key);
             
-            if( count( $in ) === 2 && $in[0] === $this->_epk ){
+            if( count( $in ) === 2 && $in[0] === $epk ){
                 $output[ $key[ 1 ] ] = strip_tags($val);
             }
         }
@@ -291,7 +294,6 @@ class Request{
      * @return string
      */
     public final function module(){ return $this->isAdmin() ? 'admin' : 'public'; }
-
     /**
      * Redirige una request para delegar a un nuevo contexto/acción de controlador
      * @param string $action ACCION o CONTEXTO.ACCION del evento
@@ -313,7 +315,7 @@ class Request{
         }
         
         if( !is_null($data)){
-            $this->_input = $this->filterInput( $data );
+            $this->_input = self::filterInput( $data , $this->_epk );
         }
         
         return $this;
@@ -344,7 +346,7 @@ class Request{
         
         if(is_null($post)){ $post = array(); }
 
-        return new Request( $app , $this->filterInput( array_merge( $get , $post ) ) );
+        return new Request( $app , self::filterInput( array_merge( $get , $post ), $app->endPointKey() ) );
     }
     /**
      * @return \CODERS\Framework\Request

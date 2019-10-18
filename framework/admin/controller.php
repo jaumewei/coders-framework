@@ -1,9 +1,13 @@
 <?php namespace CODERS\Framework\Controllers;
 
 defined('ABSPATH') or die;
-
+/**
+ * 
+ */
 final class Framework{
-    
+    /**
+     * @var array
+     */
     private $_reports = array(
         //notify content here
     );

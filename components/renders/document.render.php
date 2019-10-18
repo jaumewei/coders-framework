@@ -39,11 +39,11 @@ defined('ABSPATH') or die;
     /**
      * @param \CodersApp $app
      */
-    protected function __construct( \CodersApp $app ) {
+    function __construct( ) {
         
         $this->__registerAssets( );
         
-        $this->registerClass( array( $app->endPointName(),'app-key-'.$app->endPointKey()) );
+        //$this->registerClass( array( $appName(),'app-key-'.$appKey) );
     }
     /**
      * 
@@ -308,7 +308,8 @@ defined('ABSPATH') or die;
      */
     protected function renderContent(){
         
-        $layout = $this->getLayout();
+        //$layout = $this->getLayout($this->_layout);
+        $layout = $this->getView($this->_layout, 'layout');
         
         if(file_exists($layout)){
 

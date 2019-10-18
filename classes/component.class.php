@@ -82,4 +82,17 @@ abstract class Component{
         
         return get_class( $this );
     }
+    /**
+     * @return string Local component Path
+     */
+    public function getPath(){
+        
+        $class = new \ReflectionClass(get_called_class());
+        // within either sub or parent class, provided the instance is a sub class
+        //$ref = new \ReflectionObject($this);
+        // filename
+        return dirname( $class->getFileName() );
+    }
 }
+
+

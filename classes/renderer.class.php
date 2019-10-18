@@ -7,17 +7,45 @@ use CODERS\Framework\Dictionary;
 /**
  * 
  */
-abstract class Renderer{    
-    /**
-     * Application name and Key
-     * @var string
-     */
-    //private $_appKey,$_appName;
+abstract class Renderer extends \CODERS\Framework\Component{
     /**
      * @var \CODERS\Framework\Dictionary
      */
     private $_model = NULL;
     
+    private $_app, $_module;
+
+    /**
+     * @param string $appName
+     * @param string $module
+     */
+    /*protected function __construct( $appName , $module ) {
+        
+        $this->app = $appName;
+        
+        $this->module = $module;
+    }*/
+    protected function getView( $view , $type = 'html' ){
+        
+        $path = sprintf('%smodules/%s/views/%s/%s.php',
+                \CodersApp::appRoot($this->_app),
+                $this->_module, $type, $view);
+        
+        return $path;
+    }
+    /**
+     * @param string $application
+     * @param string $module
+     * @return \CODERS\Framework\Renderer
+     */
+    public function setup( $application , $module ){
+
+        $this->_app = $application;
+
+        $this->_module = $module;
+
+        return $this;
+    }
     //private $_html = NULL;
     /**
      * @param string $name
@@ -44,7 +72,7 @@ abstract class Renderer{
             return $this->__label(substr($name, 6));
         }
         
-        return '';
+        return parent::get($name);
     }
     /**
      * @param string $tag
@@ -163,6 +191,7 @@ abstract class Renderer{
     protected function __value( $field ){
         
         if( !is_null( $this->_model)){
+
             return $this->_model->$field;
         }
 
@@ -189,16 +218,17 @@ abstract class Renderer{
             return array_key_exists('label', $meta) ? $meta['label'] : $field;
         }
 
-        return sprintf('<!-- DATA %s NOT FOUND -->',$field);
+        return sprintf('<!-- label %s not found -->',$field);
     }
     /**
      * 
      * @param string $display
      * @return string
      */
-    protected function __display( $display ){
+    public function __display( $display ){
 
-        $path = sprintf( '%s/html/%s.php', __DIR__, $display );
+        $path = $this->getView($display);
+        //$path = sprintf( '%s/html/%s.php', __DIR__, $display );
         
         if(file_exists($path )){
             require $path;
@@ -209,7 +239,20 @@ abstract class Renderer{
     /**
      * @return \CODERS\Framework\Views\Renderer
      */
-    abstract public function display( );
+    public function display( $view = 'default' ){
+        
+        $path = $this->getView( $view );
+        
+        if(file_exists($path)){
+            
+            require $path;
+        }
+        else{
+            printf('<!-- VIEW NOT FOUND [%s] -->' , $view );
+        }
+
+        return $this;
+    }
     /**
      * @param string $title
      * @return \CODERS\Framework\Views\Renderer
@@ -235,89 +278,66 @@ abstract class Renderer{
      */
     protected function getModel(){ return $this->_model; }
     /**
-     * 
-     * @param \CodersApp $app
-     * @param string $template
-     * @param boolean $admin
-     * @return \CODERS\Framework\Views\Renderer | boolean
-     */
-    /*public static final function create( \CodersApp $app , $template , $admin ){
-        
-        $path = sprintf('%s/%s/views/%s.view.php',
-                $app->appPath(),
-                $admin ? 'admin' : 'public',
-                $template);
-        
-        $class = sprintf('\CODERS\Framework\Views\%sView', \CodersApp::classify($template));
-        
-        if(file_exists($path)){
-            
-            require $path;
-            
-            if(class_exists($class) && is_subclass_of($class, self::class)){
-                
-                return new $class( $app );
-            }
-        }
-        
-        return FALSE;
-    }*/
-
-    public static final function createCalendar(){
-        
-    }
-    public static final function createMap(){
-        
-    }
-    public static final function createForm(){
-        
-    }
-    /**
      * @param \CodersApp $app
      * @param string $view
      * @param boolean $admin
      * @return boolean|\CODERS\Framework\Views\DocumentRender
      */
-    public static final function createDocument(\CodersApp $app , $view = 'public.main' ){
+    /*public static final function createDocument( \CODERS\Framework\Controller $context ){
         
         if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
 
             require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
         }
-
-        if( strpos($view, '.')  === FALSE ){
-
-            $view = 'public.' . $view;
-        }
-
-        $route = explode('.', $view);
         
-        if( $route[ 0 ] !== 'public' && $route[ 0 ] !== 'admin' ){
-            $route[ 0 ] = 'public';
-        }
+        return new DocumentRender( $context->getAppName() );
+    }*/
+    /**
+     * @return \CODERS\Framework\Views\CalendarRender
+     */
+    /*public static final function createCalendar(){
 
-        $path = sprintf('%s/modules/%s/views/%s.document.php', $app->appPath(), $route[ 0 ], $route[ 1 ]);
-        
-        $class = sprintf('\CODERS\Framework\Views\%sDocument', \CodersApp::classify($route[1]));
-        
-        if(file_exists($path)){
-            
-            require $path;
+        if(!class_exists('\CODERS\Framework\Views\CalendarRender')){
 
-            if(class_exists($class) && is_subclass_of($class, \CODERS\Framework\Views\DocumentRender::class)){
-                
-                return new $class( $app );
-            }
-            else{
-                throw new \Exception($class);
-            }
-        }
-        else{
-            throw new \Exception($path);
+            require_once( sprintf('%s/components/renders/calendar.render.php',CODERS_FRAMEWORK_BASE) );
         }
         
-        return FALSE;
-    }
+        return new CalendarRender( );
+    }*/
+    /**
+     * @return \CODERS\Framework\Views\MapRender
+     */
+    /*public static final function createMap(){
+        if(!class_exists('\CODERS\Framework\Views\MapRender')){
+
+            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        return new MapRender( );
+    }*/
+    /**
+     * @return \CODERS\Framework\Views\FormRender
+     */
+    /*public static final function createForm(){
+        
+        if(!class_exists('\CODERS\Framework\Views\FormRender')){
+
+            require_once( sprintf('%s/components/renders/form.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        return new FormRender( );
+    }*/
+    /**
+     * @return \CODERS\Framework\Views\ViewRender
+     */
+    /*public static final function createView(){
+        if(!class_exists('\CODERS\Framework\Views\ViewRender')){
+
+            require_once( sprintf('%s/components/renders/view.render.php',CODERS_FRAMEWORK_BASE) );
+        }
+        
+        return new ViewRender( );
+    }*/
 }
 
 

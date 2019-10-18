@@ -13,16 +13,12 @@
     <h2 class="title"><?php print __('Active Applications','coders_framework') ?></h2>
 <?php if( count( $instances )) : ?>
 <ul class="list">
-    <?php foreach( $instances as $ins ) : $instance = \CodersApp::instance($ins); ?>
+    <?php foreach( $instances as $instance => $atts ) : ?>
         <li class="app-box">
-            <a href="<?php print get_site_url() ?>" target="_blank" class="app-name">
-                <?php print $ins ?>
+            <a href="<?php printf('%s/%s', get_site_url(), $atts['end-point']); ?>" target="_blank" class="app-name">
+                <?php print $instance ?>
             </a>
-            <span class="status">
-                <?php printf('%s %s',
-                        $instance !== FALSE ? $instance->countComponents() : 0 ,
-                        __('components loaded','coders_framework')); ?>
-            </span>
+            <span class="status"><?php print $atts['class'] ?></span>
         </li>
     <?php endforeach; ?>
 </ul>
