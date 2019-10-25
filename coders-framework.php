@@ -938,41 +938,16 @@ abstract class CodersApp{
         return get_plugin_data(__FILE__);
     }
     /**
-     * Inicialización
-     * Cada llamada a esta instancia se realiza solo en el contexto de la
-     * petición del usuario sobre una única aplicacion. No es necesario
-     * trabajar con diferentes instancias a la vez si tenemos varias aplicaciones
-     * sobre este framework. Simplemente, se cargará la aplicación adecuada
-     * dentro de su espacio a cada llamada requerida desde el plugin activo.
-     * 
-     * @author Coder01 <coder01@mnkcoder.com>
-     * @return \CodersApp|Boolean
-     */
-    /*public static final function instance( $app ){
-        
-        return strlen($app) && isset(self::$_instance[$app]) ? self::$_instance[ $app ] : FALSE;;
-    }*/
-    /**
-     * Current instance
-     * @return \CodersApp | boolean
-     */
-    /*public static final function current(){
-        
-        return strlen( self::$_current ) && isset( self::$_instance[self::$_current]) ?
-            self::$_instance[ self::$_current ] :
-            FALSE;
-    }*/
-    /**
-     * @param string $app
+     * @param string $application
      * @return string
      */
-    public final function repoPath(){
+    public static final function repoPath( $application ){
         
         $root = get_option( self::ROOT_PATH , '' );
         
-        if(strlen($root)){
+        if(strlen($root)  && strlen($application)){
 
-            return sprintf('%s/%s', $root, strlen($this) );
+            return sprintf('%s/%s', $root, $application );
         }
         
         return '';
