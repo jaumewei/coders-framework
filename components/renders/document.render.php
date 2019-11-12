@@ -35,7 +35,9 @@ defined('ABSPATH') or die;
      * Layout and context to display the view
      * @var string
      */
-    private $_layout,$_context,$_title = '';
+    private $_layout = 'default';
+    private $_context;
+    private $_title = '';
     /**
      * @param \CodersApp $app
      */
@@ -378,7 +380,8 @@ defined('ABSPATH') or die;
      * 
      * @return \CODERS\Framework\Views\DocumentRenderer
      */
-    public function display() {
+    public function display( $view = 'default' ) {
+
         //HEADER & OPEN DOCUMENT
         return $this->renderHeader()
                 ->renderContent()
