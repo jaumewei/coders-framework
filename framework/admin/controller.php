@@ -1,4 +1,4 @@
-<?php namespace CODERS\Framework\Controllers;
+<?php namespace CODERS\Framework\Responses;
 
 defined('ABSPATH') or die;
 /**

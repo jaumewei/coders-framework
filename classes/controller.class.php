@@ -5,7 +5,7 @@ defined('ABSPATH') or die;
 /**
  * 
  */
-abstract class Controller extends Component{
+abstract class Response extends Component{
     
     const MAX_REDIRECTIONS = 3;
     
@@ -157,7 +157,7 @@ abstract class Controller extends Component{
     /**
      * @param \CodersApp $app
      * @param \CODERS\Framework\Request $R
-     * @return \CODERS\Framework\Controller | boolean
+     * @return \CODERS\Framework\Response | boolean
      */
     public static final function request( \CodersApp $app, Request  $R ){
         
@@ -171,13 +171,13 @@ abstract class Controller extends Component{
                 //select administrator or public module
                 $R->isAdmin() ? 'admin' : 'public', $R->context());
 
-        $class = sprintf('\CODERS\Framework\Controllers\%sController', $R->context());
+        $class = sprintf('\CODERS\Framework\Responses\%sController', $R->context());
 
         if (file_exists($path)) {
 
             require_once $path;
 
-            if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
+            if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Response::class, TRUE)) {
 
                 return new $class($app);
             }
@@ -191,7 +191,7 @@ abstract class Controller extends Component{
      * @param string $controller
      * @param boolean $admin
      * @param string $parent
-     * @return \CODERS\Framework\Controller|boolean
+     * @return \CODERS\Framework\Response|boolean
      */
     public static final function create( \CodersApp $app , $controller , $admin = FALSE ){
 
@@ -200,13 +200,13 @@ abstract class Controller extends Component{
                 $admin ? 'admin' : 'public',
                 strtolower( $controller ) );
 
-        $class = sprintf('\CODERS\Framework\Controllers\%sController', $controller);
+        $class = sprintf('\CODERS\Framework\Responses\%sController', $controller);
 
         if (file_exists($path)) {
 
             require_once $path;
 
-            if ( class_exists($class) && is_subclass_of($class, \CODERS\Framework\Controller::class, TRUE)) {
+            if ( class_exists($class) && is_subclass_of($class, \CODERS\Framework\Response::class, TRUE)) {
 
                 return new $class($app);
             }
