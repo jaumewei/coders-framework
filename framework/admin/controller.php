@@ -1,4 +1,4 @@
-<?php namespace CODERS\Framework\Responses;
+<?php namespace CODERS\Framework\Controllers;
 
 defined('ABSPATH') or die;
 /**
@@ -16,7 +16,44 @@ final class Framework{
         
         //$this->execute($this->request());
     }
+    /**
+     * @param string $name
+     * @return String
+     */
+    public function __get($name) {
+        
+        $att = sprintf('get%sAttribute', preg_replace('/_/', '', $name) );
     
+        return method_exists($this, $att) ? $this->$att( ) : FALSE;
+    }
+    /**
+     * @return array
+     */
+    protected function getInstancesAttribute(){
+        return \CodersApp::listInstances();
+    }
+    /**
+     * @return array
+     */
+    protected function getPluginDataAttribute(){
+        return \CodersApp::pluginInfo();
+    }
+    /**
+     * @return string
+     */
+    protected function getRepoPathAttribute(){
+        return get_option('coders_root_path', '' );
+    }
+    /**
+     * @return array
+     */
+    protected function getRequestAttribute(){
+        return $this->request();
+    }
+    /**
+     * 
+     * @return array
+     */
     private final function request(){
         
         $input = filter_input_array(INPUT_POST);
@@ -66,12 +103,6 @@ final class Framework{
      * @return boolean
      */
     private function default_action( array $request) {
-        
-        $instances = \CodersApp::listInstances();
-        
-        $plugin_data = \CodersApp::pluginInfo();
-        
-        $repo_path = get_option('coders_root_path', '' );
         
         require sprintf('%s/view.php', __DIR__ );
         

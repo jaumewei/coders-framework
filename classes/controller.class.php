@@ -162,28 +162,6 @@ abstract class Response extends Component{
     public static final function request( \CodersApp $app, Request  $R ){
         
         return self::create($app, $R->context(), $R->isAdmin());
-        
-        /**
-         * @deprecated since version number
-         */
-        
-        $path = sprintf('%s/modules/%s/controllers/%s.controller.php', $app->appPath(),
-                //select administrator or public module
-                $R->isAdmin() ? 'admin' : 'public', $R->context());
-
-        $class = sprintf('\CODERS\Framework\Responses\%sController', $R->context());
-
-        if (file_exists($path)) {
-
-            require_once $path;
-
-            if (class_exists($class) && is_subclass_of($class, \CODERS\Framework\Response::class, TRUE)) {
-
-                return new $class($app);
-            }
-        }
-
-        return FALSE;
     }
     /**
      * 
@@ -200,7 +178,7 @@ abstract class Response extends Component{
                 $admin ? 'admin' : 'public',
                 strtolower( $controller ) );
 
-        $class = sprintf('\CODERS\Framework\Responses\%sController', $controller);
+        $class = sprintf('\CODERS\Framework\Controllers\%sController', $controller);
 
         if (file_exists($path)) {
 

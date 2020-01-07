@@ -60,6 +60,12 @@ abstract class CodersApp{
         //list here all endpoints by App
     ];
     /**
+     * @var \CODERS\Framework\Response[]
+     */
+    private $_adminOptions = array(
+        //
+    );
+    /**
      * @var string
      */
     /**
@@ -182,21 +188,15 @@ abstract class CodersApp{
                         'options-general.php',
                         __('Coders Framework','coders_framework'),
                         __('Coders Framework','coders_framework'),
-                        'administrator','coders-framework-manager',
-                        function(){
-
-                            $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
-
-                            if(file_exists($controller_path)){
-
-                                require_once $controller_path;
-
-                                $C = new \CODERS\Framework\Responses\Framework();
-
-                                $C->execute() || printf('<p>INVALID_MASTERCONTROLLER_RESPONSE [%s]</p>',$controller_path);
+                        'administrator','coders-framework-manager', function(){
+                            $path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
+                            if( file_exists( $path ) ){
+                                require_once $path;
+                                $C = new \CODERS\Framework\Controllers\Framework();
+                                $C->execute() || printf('<p>INVALID_MASTERCONTROLLER_RESPONSE [%s]</p>',$path);
                             }
                             else{
-                                printf('<p>INVALID_MASTERCONTROLLER_PATH [%s]</p>',$controller_path);
+                                printf('<p>INVALID_MASTERCONTROLLER_PATH [%s]</p>',$path);
                             }
                         }, 51 );
                 },100000);
@@ -220,15 +220,28 @@ abstract class CodersApp{
         return $translations;
     }
     /**
-     * Register all admin controllers here
-     * as option => Controller
-     * @return \CODERS\Framework\Response[]
+     * @param string $option
+     * @return \CodersApp
      */
-    protected function importAdminMenu(){
+    protected function registerAdminMenu( $option ){
+        
+        if( is_admin( ) ){
 
-        return array(
-            //option => Controller
-        );
+            if( !array_key_exists( $option , $this->_adminOptions ) ){
+                
+                $response = \CODERS\Framework\Response::create(
+                        $this,
+                        $option,
+                        TRUE );
+                
+                if( $response !== FALSE ){
+                    
+                    $this->_adminOptions[ $response->getName( ) ] = $response;
+                }
+            }
+        }
+        
+        return $this;
     }
     /**
      * Preload all core and instance components
@@ -259,7 +272,7 @@ abstract class CodersApp{
 
         if( $this->isAdmin() ){
 
-            $menu = $this->importAdminMenu();
+            $menu = &$this->_adminOptions;
 
             add_action( 'admin_menu', function() use( $menu ){
                 
