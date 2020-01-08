@@ -28,19 +28,6 @@ abstract class CodersApp{
      * @var string Base Dir storage for repository setup
      */
     const ROOT_PATH = 'coders_root_path';
-    
-    /**
-     * Instances must bestored within an array, they're up to be used both in
-     * frontend context or in admin/backend- which requires always some preload
-     * methods to know all available installed applications.
-     * 
-     * @var string List of registered instances
-     */
-    private static $_instances = [];
-    /**
-     * @var string
-     */
-    //private static $_current = '';
     /**
      * CORE COMPONENT DEFINITION
      * @var array
@@ -62,6 +49,25 @@ abstract class CodersApp{
             'service',
         ],
     ];
+    /**
+     * Instances must bestored within an array, they're up to be used both in
+     * frontend context or in admin/backend- which requires always some preload
+     * methods to know all available installed applications.
+     * 
+     * @var string List of registered instances
+     */
+    private static $_endPoints = [
+        //list here all endpoints by App
+    ];
+    /**
+     * @var \CODERS\Framework\Response[]
+     */
+    private $_adminOptions = array(
+        //
+    );
+    /**
+     * @var string
+     */
     /**
      * INSTANCE COMPONENTS
      * @var array
@@ -90,10 +96,6 @@ abstract class CodersApp{
         //register service contexts here
     );
     /**
-     * @var \CODERS\Framework\Models\PostModel[] 
-     */
-    private $_postTypes = array();
-    /**
      * End point key
      * @var string
      */
@@ -103,7 +105,6 @@ abstract class CodersApp{
      * @var string
      */
     private $_EPN;
-    
     /**
      * 
      */
@@ -118,15 +119,7 @@ abstract class CodersApp{
         //$this->bindCMS()->__init();
         
         //administración
-        $this->registerEndPoint()
-                //redirección publica
-                ->registerResponse()
-                //registrar opciones del menú de administrador
-                ->registerAdminMenu()
-                //register post types
-                ->registerPostTypes()
-                //personalizaciones
-                ->hookCustom();
+        $this->registerEndPoint();
     }
     /**
      * @return string
@@ -147,7 +140,7 @@ abstract class CodersApp{
      */
     public static final function appRoot( $app ){
        
-        return (array_key_exists($app, self::$_instances)) ?
+        return (array_key_exists($app, self::$_endPoints)) ?
                 sprintf('%s/%s/', preg_replace('/\\\\/', '/', dirname(__DIR__) ),$app) :
                 //sprintf('%s/%s/', dirname(__DIR__),$app) :
                 '' ;
@@ -195,34 +188,20 @@ abstract class CodersApp{
                         'options-general.php',
                         __('Coders Framework','coders_framework'),
                         __('Coders Framework','coders_framework'),
-                        'administrator','coders-framework-manager',
-                        function(){
-
-                            $controller_path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
-
-                            if(file_exists($controller_path)){
-
-                                require_once $controller_path;
-
+                        'administrator','coders-framework-manager', function(){
+                            $path = sprintf('%s/framework/admin/controller.php',CODERS_FRAMEWORK_BASE);
+                            if( file_exists( $path ) ){
+                                require_once $path;
                                 $C = new \CODERS\Framework\Controllers\Framework();
-
-                                $C->execute() || printf('<p>INVALID_MASTERCONTROLLER_RESPONSE [%s]</p>',$controller_path);
+                                $C->execute() || printf('<p>INVALID_MASTERCONTROLLER_RESPONSE [%s]</p>',$path);
                             }
                             else{
-                                printf('<p>INVALID_MASTERCONTROLLER_PATH [%s]</p>',$controller_path);
+                                printf('<p>INVALID_MASTERCONTROLLER_PATH [%s]</p>',$path);
                             }
                         }, 51 );
                 },100000);
             }
         });
-    }
-    /**
-     * 
-     * @return \CodersApp
-     */
-    protected final function registerPostType(  ){
-        
-        return $this;
     }
     /**
      * List all available langguates in the CMS
@@ -241,15 +220,28 @@ abstract class CodersApp{
         return $translations;
     }
     /**
-     * Register all admin controllers here
-     * as option => Controller
-     * @return \CODERS\Framework\Controller[]
+     * @param string $option
+     * @return \CodersApp
      */
-    protected function importAdminMenu(){
+    protected function registerAdminMenu( $option ){
+        
+        if( is_admin( ) ){
 
-        return array(
-            //option => Controller
-        );
+            if( !array_key_exists( $option , $this->_adminOptions ) ){
+                
+                $response = \CODERS\Framework\Response::create(
+                        $this,
+                        $option,
+                        TRUE );
+                
+                if( $response !== FALSE ){
+                    
+                    $this->_adminOptions[ $response->getName( ) ] = $response;
+                }
+            }
+        }
+        
+        return $this;
     }
     /**
      * Preload all core and instance components
@@ -273,79 +265,14 @@ abstract class CodersApp{
         }
     }
     /**
-     * Hooks the application endpoint response, bypassing the requested route through
-     * the framework control
-     * @return \CodersApp
-     */
-    private final function registerResponse(){
-        
-        $app = $this;
-            
-        /* Handle template redirect according the template being queried. */
-        add_action( 'template_redirect', function() use( $app ){
-
-            if( $app !== FALSE ){
-                //capture the output to dispatch in the response
-                $endpoint = $app->endPoint( $app->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
-                //check both permalink and page template (validate with locale)
-                if ( \CodersApp::queryRoute( $app->endPoint( $endpoint , TRUE ) )  ) {
-
-                    /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
-                    global $wp_query;
-                    //blow up 404 errors here
-                    $wp_query->set('is_404', FALSE);
-                    //and execute the response
-                    $app->run( $endpoint );
-                    //then terminate app and wordpressresponse
-                    exit;
-                }
-            }
-        } );
-        
-        return $this;
-    }
-    /**
      * Redirect End Point URL
      * @return \CodersApp
      */
     private final function registerEndPoint(){
 
-        $app = $this;
-        
-        add_action( 'init' , function() use($app){
-
-            global $wp, $wp_rewrite;
-            
-            if( $app !== FALSE ){
-                //import the regiestered locale's endpoint from the settinsg
-                $endpoint = $app->endPoint($app->getOption('endpoint' ,'default' ) , TRUE );
-                
-                //now let wordpress do it's stuff with the query router
-                $wp->add_query_var( 'template' );   
-
-                add_rewrite_endpoint( $endpoint , EP_ROOT );
-
-                $wp_rewrite->add_rule(
-                        sprintf('^/%s/?$', $endpoint), 
-                        'index.php?template=' . $endpoint,
-                        'bottom' );
-                
-                //and rewrite
-                $wp_rewrite->flush_rules();
-            }
-        } );
-
-        return $this;
-    }
-    /**
-     * Hook para la página de administración del plugin
-     * @return \CodersApp
-     */
-    private final function registerAdminMenu(){
-
         if( $this->isAdmin() ){
 
-            $menu = $this->importAdminMenu();
+            $menu = &$this->_adminOptions;
 
             add_action( 'admin_menu', function() use( $menu ){
                 
@@ -378,28 +305,54 @@ abstract class CodersApp{
                 }
             }, 10000 );
         }
-        
-        return $this;
-    }
-    /**
-     * Hook para la página de administración del plugin
-     * @return \CodersApp
-     */
-    private function registerPostTypes(){
+        else{
 
-        foreach( $this->_postTypes as $post ){
+            $app = $this;
+            /* Setup the routing hook */
+            add_action( 'init' , function() use($app){
 
-            register_post_type( $post->type(), $post->definition());
+                global $wp, $wp_rewrite;
+
+                if( $app !== FALSE ){
+                    //import the regiestered locale's endpoint from the settinsg
+                    $endpoint = $app->endPoint($app->getOption('endpoint' ,'default' ) , TRUE );
+
+                    //now let wordpress do it's stuff with the query router
+                    $wp->add_query_var( 'template' );   
+
+                    add_rewrite_endpoint( $endpoint , EP_ROOT );
+
+                    $wp_rewrite->add_rule(
+                            sprintf('^/%s/?$', $endpoint), 
+                            'index.php?template=' . $endpoint,
+                            'bottom' );
+
+                    //and rewrite
+                    $wp_rewrite->flush_rules();
+                }
+            } );
+            /* Handle template redirect according the template being queried. */
+            add_action( 'template_redirect', function() use( $app ){
+
+                if( $app !== FALSE ){
+                    //capture the output to dispatch in the response
+                    $endpoint = $app->endPoint( $app->getOption('endpoint', \CodersApp::DEFAULT_EP ) );
+                    //check both permalink and page template (validate with locale)
+                    if ( \CodersApp::queryRoute( $app->endPoint( $endpoint , TRUE ) )  ) {
+
+                        /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
+                        global $wp_query;
+                        //blow up 404 errors here
+                        $wp_query->set('is_404', FALSE);
+                        //and execute the response
+                        $app->response( $app->request( ) );
+                        //then terminate app and wordpressresponse
+                        exit;
+                    }
+                }
+            } );
         }
 
-        return $this;
-    }
-    /**
-     * Cargador de hooks personalizados
-     * @return \CodersApp
-     */
-    protected function hookCustom(){
-        
         return $this;
     }
     /**
@@ -412,7 +365,7 @@ abstract class CodersApp{
     /**
      * Initializer
      */
-    abstract protected function __init();
+    //abstract protected function __init();
     /**
      * Defines a hierarchy of end-point translations, customizable from the child application classes
      * 
@@ -471,49 +424,43 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * 
-     * @param \CODERS\Framework\Request $R
-     * @return boolean
+     * @return \CODERS\Framework\Request
+     * @throws Exception
      */
-    protected function runController( \CODERS\Framework\Request $R ){
-       
-        if( $R->isAdmin() ){
-            
-            if(array_key_exists($R->getContext(), $this->_adminOptions)){
-                
-                return $this->_adminOptions[ $R->getContext() ]->__execute($R);
+    protected function request(){
+
+        if( !class_exists( '\CODERS\Framework\Request' ) ){
+            throw new Exception('BAD_REQUEST_RESPONSE');
+        }
+        /**
+         * import request
+         */
+        return \CODERS\Framework\Request::import( $this );
+    }
+    /**
+     * @return \CODERS\Framework\Response
+     */
+    protected function response( \CODERS\Framework\Request $R ){
+        
+        try{
+            if( $R->isAdmin() ){
+
+                if(array_key_exists($R->getContext(), $this->_adminOptions)){
+
+                    return $this->_adminOptions[ $R->getContext() ]->__execute($R);
+                }
+                else{
+                    throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$R->getContext()));
+                }
             }
             else{
-                throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$R->getContext()));
+                return \CODERS\Framework\Response::request( $this, $R );
             }
         }
-        elseif ( ( $controller = $this->createController($R->context()) ) !== FALSE ) {
-
-            return $controller->__execute($R);
+        catch (Exception $ex) {
+            die($ex->getMessage());
         }
-        else{
-            throw new Exception(sprintf('INVALID PUBLIC CONTROLLER [%s]',$R->context()));
-        }
-        
-        return FALSE;
     }
-    /**
-     * @return array
-     */
-    protected function response(){
-        
-        return array(
-            'controller',
-            //'services'
-        );
-    }
-    /**
-     * @return \CodersApp
-     */
-    /*public final function cms(){
-        
-        return $this->_system;
-    }*/
     /**
      * @return \CODERS\Framework\DB|boolean
      */
@@ -523,217 +470,6 @@ abstract class CodersApp{
             return new \CODERS\Framework\DB( $this );
         }
         
-        return FALSE;
-    }
-    /**
-     * @return boolean
-     */
-    public function run( ){
-        
-        try{
-            /**
-             * Load istance components
-             */
-            //RESERVE THIS APP TO THE CURRENT INSTANCE
-            //self::$_current = strval($this);
-            //load all instance required classes and setup
-            //$this->importComponents( $this->_components );
-            //load runtime extensions
-            self::registerComponents( $this->_extensions , $this );
-            
-            if( !class_exists( '\CODERS\Framework\Request' ) ){
-                throw new Exception('BAD_REQUEST_RESPONSE');
-            }
-            /**
-             * import request
-             */
-            $request = \CODERS\Framework\Request::import( $this );
-
-            foreach( $this->response() as $call ){
-                
-                if(is_callable($call)){
-                    //call it as thefunction it is, with the instance and  the request
-                    if( ! $call( $this , $request ) ){
-                        throw new Exception(sprintf('RUNABLE ENCLOSURE ERROR %s', strval($call)));
-                        //break;
-                    }
-                }
-                else{
-                    //callit as a defined methodwithin the instance
-                    $run = sprintf('run%s',$call);
-                    
-                    if(method_exists($this, $run)){
-                        
-                        if( ! $this->$run( $request ) ){
-                            throw new Exception(sprintf('INVALID_RUNABLE_METHOD_RESPONSE [%s]', $run ));
-                        }
-                    }
-                    else{
-                        throw new Exception(sprintf('INVALID_RUNABLE_METHOD [%s]', $call ));
-                    }
-                }
-            }
-            return TRUE;
-        }
-        catch (Exception $ex) {
-            print $ex->getMessage();
-        }
-
-        return FALSE;
-    }
-    /**
-     * @param string $controller
-     * @param boolean $admin
-     * @return \CODERS\Framework\Controller | boolean
-     */
-    public function createController( $controller , $admin = FALSE ){
-        return class_exists('\CODERS\Framework\Controller') ?
-                \CODERS\Framework\Controller::create( $this, $controller, $admin ) :
-                FALSE;
-    }
-    /**
-     * @param string $view
-     * @return \CODERS\Framework\Views\DocumentRender | boolean
-     */
-    public function createDocument( $view = 'public.main' ){
-        
-        return (class_exists('\CODERS\Framework\Views\Renderer'))?
-            \CODERS\Framework\Views\Renderer::createDocument( $this, $view ) :
-            FALSE;
-    }
-    /**
-     * @param string $view
-     * @return \CODERS\Framework\Views\ViewRender | boolean
-     */
-    public function createView( $view ){
-        
-        if(class_exists('\CODERS\Framework\Views\ViewRender')){
-
-            $path = sprintf('%s/%s/views/%s.view.php',
-                    $this->appPath(),
-                    is_admin() ? 'admin' : 'public',
-                    $view);
-
-            $class = sprintf('\CODERS\Framework\Views\%sView', self::classify($view));
-
-            if(file_exists($path)){
-
-                require $path;
-
-                if(class_exists($class)
-                        && is_subclass_of($class, \CODERS\Framework\Views\ViewRender::class)){
-
-                    return new $class( );
-                }
-            }
-        }
-        
-        return FALSE;
-    }
-    /**
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\Models\ListModel|boolean
-     */
-    public function createList( $model , array $data = array( ) ){
-        
-        if(class_exists('\CODERS\Framework\Models\ListModel')){
-
-            $path = sprintf('%s/models/%s.list.php', $this->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sList', \CodersApp::classify($model));
-
-            if (file_exists($path)) {
-
-                require_once $path;
-
-                if (class_exists($class)
-                        && is_subclass_of($class, \CODERS\Framework\Models\ListModel::class, TRUE)) {
-
-                    return new $class($data);
-                }
-            }
-        }
-
-        return FALSE;
-    }
-    /**
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\Models\CalendarModel | boolean
-     */
-    public function createCalendar( $model , array $data = array( ) , array $settings = array( ) ){
-        
-        if(class_exists('\CODERS\Framework\Models\CalendarModel')){
-            
-            $path = sprintf('%s/models/%s.calendar.php', $this->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sCalendar', \CodersApp::classify( $model ) );
-
-            if( file_exists( $path ) ){
-
-                require_once $path;
-
-                if( class_exists($class)
-                        && is_subclass_of($class, \CODERS\Framework\Models\CalendarModel::class ,TRUE)){
-
-                    return new $class( $data , $settings );
-                }
-            }
-        }
-        
-        return FALSE;
-    }
-    /**
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\Models\FormModel | boolean
-     */
-    public function createForm( $model , array $data = array( ) ){
-        
-        if(class_exists('\CODERS\Framework\Models\FormModel')){
-            
-            $path = sprintf('%s/models/%s.form.php', $this->appPath(), $model);
-
-            $class = sprintf('\CODERS\Framework\Models\%sForm', \CodersApp::classify( $model ) );
-
-            if( file_exists( $path ) ){
-
-                require_once $path;
-
-                if( class_exists($class)
-                        && is_subclass_of($class, \CODERS\Framework\Models\FormModel::class ,TRUE)){
-
-                    return new $class( $data );
-                }
-            }
-        }
-        
-        return FALSE;
-    }
-
-    /**
-     * @param string $model
-     * @param array $data
-     * @return \CODERS\Framework\IModel | boolean
-     */
-    public function createModel( $model , $data = array( ) ){
-        
-        $path = sprintf('%s/models/%s.model.php', $this->appPath(), $model);
-
-        $class = sprintf('\CODERS\Framework\Models\%sModel', self::classify($model));
-
-        if (file_exists($path)) {
-
-            require_once $path;
-
-            if (class_exists($class)
-                    && is_subclass_of($class, \CODERS\Framework\IModel::class, TRUE)) {
-
-                return new $class( $data );
-            }
-        }
-
         return FALSE;
     }
     /**
@@ -957,7 +693,7 @@ abstract class CodersApp{
      */
     public static final function listInstances(){
         //return array_keys(self::$_instance);
-        return self::$_instances;
+        return self::$_endPoints;
     }
     /**
      * @param string $instance
@@ -966,7 +702,7 @@ abstract class CodersApp{
     public static final function isLoaded( $instance ){
 
         //return array_key_exists($instance, self::$_instance);
-        return in_array($instance, self::$_instances);
+        return in_array($instance, self::$_endPoints);
     }
     /**
      * @global type $wp
@@ -1087,7 +823,7 @@ abstract class CodersApp{
                 if( !is_null($instance)){
 
                     //self::$_instance[ $app ] = $instance;
-                    self::$_instances[ strval($instance) ] = array(
+                    self::$_endPoints[ strval($instance) ] = array(
                         'class' => get_class($instance),
                         'end-point' => $instance->endPointName()
                     );

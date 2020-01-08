@@ -5,7 +5,7 @@ defined('ABSPATH') or die;
 /**
  * 
  */
-abstract class AdminPageController extends \CODERS\Framework\Controller{
+abstract class AdminPageController extends \CODERS\Framework\Response{
 
     protected function __construct( $parent = NULL ) {
         

@@ -283,7 +283,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param boolean $admin
      * @return boolean|\CODERS\Framework\Views\DocumentRender
      */
-    /*public static final function createDocument( \CODERS\Framework\Controller $context ){
+    /*public static final function createDocument( \CODERS\Framework\Response $context ){
         
         if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
 
