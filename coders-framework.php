@@ -3,7 +3,7 @@
  * Plugin Name: Coders Framework
  * Plugin URI: https://coderstheme.org
  * Description: Framework Prototype
- * Version: 1.0.0
+ * Version: 0.1.2
  * Author: Coder01
  * Author URI: 
  * License: GPLv2 or later
