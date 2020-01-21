@@ -29,55 +29,9 @@ abstract class Response extends Component{
     }
     /**
      * @param \CODERS\Framework\Request $R
-     * @return \CODERS\Framework\FormRender
-     */
-    protected function displayForm( Request $R ){
-        
-        if(!class_exists('\CODERS\Framework\Views\FormRender')){
-
-            require_once( sprintf('%s/components/renders/form.render.php',CODERS_FRAMEWORK_BASE) );
-        }
-        
-        $view = new \CODERS\Framework\Views\FormRender( );
-        
-        return $view->setup($R->endPoint(), $R->module());
-    }
-    /**
-     * @param \CODERS\Framework\Request $R
-     * @return \CODERS\Framework\MapRender
-     */
-    protected function displayMap(Request $R ){
-
-        if(!class_exists('\CODERS\Framework\Views\MapRender')){
-
-            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
-        }
-        
-        $view = new \CODERS\Framework\Views\MapRender( );
-        
-        return $view->setup($R->endPoint(), $R->module());
-    }
-    /**
-     * 
-     * @param \CODERS\Framework\Request $R
-     * @return \CODERS\Framework\CalendarRender
-     */
-    protected function displayCalendar( Request $R ){
-
-        if (!class_exists('\CODERS\Framework\Views\CalendarRender')) {
-
-            require_once( sprintf('%s/components/renders/calendar.render.php', CODERS_FRAMEWORK_BASE) );
-        }
-
-        $view = new \CODERS\Framework\Views\CalendarRender();
-        
-        return $view->setup($R->endPoint(), $R->module());
-    }
-    /**
-     * @param \CODERS\Framework\Request $R
      * @return \CODERS\Framework\Views\Renderer | boolean
      */
-    protected function displayView( Request $R ){
+    protected function createView( Request $R ){
        
         if(!class_exists('\CODERS\Framework\Views\ViewRender')){
 
@@ -87,21 +41,6 @@ abstract class Response extends Component{
         $view =  new \CODERS\Framework\Views\ViewRender();
         
         return $view->setup($R->endPoint() , $R->module());
-    }
-    /**
-     * @param \CODERS\Framework\Request $R
-     * @return \CODERS\Framework\DocumentRender
-     */
-    protected function displayDocument( Request $R ){
-
-        if(!class_exists('\CODERS\Framework\Views\DocumentRender')){
-
-            require_once( sprintf('%s/components/renders/document.render.php',CODERS_FRAMEWORK_BASE) );
-        }
-        
-        $view = new \CODERS\Framework\Views\DocumentRender();
-        
-        return $view->setup($R->endPoint(), $R->module());
     }
     /**
      * @param \CODERS\Framework\IModel $content
@@ -160,8 +99,13 @@ abstract class Response extends Component{
      * @return \CODERS\Framework\Response | boolean
      */
     public static final function request( \CodersApp $app, Request  $R ){
+                
+        $controller = self::create(
+                $app,
+                $R->context(),
+                $R->isAdmin());
         
-        return self::create($app, $R->context(), $R->isAdmin());
+        return $controller !== FALSE ? $controller->__execute( $R ) : FALSE;
     }
     /**
      * 
