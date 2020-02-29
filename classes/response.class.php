@@ -14,7 +14,7 @@ abstract class Response extends Component{
      */
     private $_redirections = 0;
     
-    private $_appName,$_appKey;
+    private $_endpoint,$_epk;
     
     //private $_appName;
     
@@ -23,24 +23,17 @@ abstract class Response extends Component{
      */
     protected function __construct( \CodersApp $app ) {
         
-        $this->_appName = $app->endPointName();
+        $this->_endpoint = $app->endPoint();
         
-        $this->_appKey = $app->endPointKey();
+        $this->_epk = $app->epk();
     }
     /**
      * @param \CODERS\Framework\Request $R
      * @return \CODERS\Framework\Views\Renderer | boolean
      */
-    protected function createView( Request $R ){
-       
-        if(!class_exists('\CODERS\Framework\Views\ViewRender')){
+    protected function createView( Request $R , $module = 'public' ){
 
-            require_once( sprintf('%s/components/renders/view.render.php',CODERS_FRAMEWORK_BASE) );
-        }
-        
-        $view =  new \CODERS\Framework\Views\ViewRender();
-        
-        return $view->setup($R->endPoint() , $R->module());
+        return \CODERS\Framework\Views\Renderer::create($this->_endpoint, $module);
     }
     /**
      * @param \CODERS\Framework\IModel $content
@@ -130,7 +123,7 @@ abstract class Response extends Component{
 
             if ( class_exists($class) && is_subclass_of($class, \CODERS\Framework\Response::class, TRUE)) {
 
-                return new $class($app);
+                return new $class( $app );
             }
         }
 
@@ -178,11 +171,11 @@ abstract class Response extends Component{
     /**
      * @return string
      */
-    public function getAppName(){ return $this->_appName; }
+    public function getAppName(){ return $this->_endpoint; }
     /**
      * @return string
      */
-    public function getAppKey(){ return $this->_appKey; }
+    public function getAppKey(){ return $this->_epk; }
 }
 
 

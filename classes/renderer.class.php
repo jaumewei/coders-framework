@@ -3,73 +3,109 @@
 defined('ABSPATH') or die;
 
 use CODERS\Framework\Dictionary;
-
 /**
  * 
  */
 abstract class Renderer extends \CODERS\Framework\Component{
     /**
-     * @var \CODERS\Framework\Dictionary
+     * @var \CODERS\Framework\IModel
      */
     private $_model = NULL;
-    
-    private $_app, $_module;
+
+    /**
+     * @var URL
+     */
+    const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css?family';
+
+    /**
+     * @var array Scripts del componente
+     */
+    private $_scripts = array();
+    /**
+     * @var array Estilos del componente
+     */
+    private $_styles = array();
+    /**
+     * @var array Links del componente
+     */
+    private $_links = array();
+    /**
+     * @var array Metas adicionales del componente
+     */
+    private $_metas = array();
+    /**
+     * @var array List all body classes here
+     */
+    private $_classes = array();
 
     /**
      * @param string $appName
      * @param string $module
      */
-    /*protected function __construct( $appName , $module ) {
+    protected function __construct( $appName , $module ) {
         
-        $this->app = $appName;
+        $this->set('endpoint', $appName)
+                ->set('module', $module)
+                ->registerAssets();
         
-        $this->module = $module;
-    }*/
-    protected function getView( $view , $type = 'html' ){
+    }
+    /**
+     * @param string $view
+     * @param string $type
+     * @return string
+     */
+    protected function viewPath( $view , $type = 'html' ){
+        
+        //$path = sprintf('%s/%s/%s.php',$this->getPath(),$type,$view);
         
         $path = sprintf('%smodules/%s/views/%s/%s.php',
-                \CodersApp::appRoot($this->_app),
-                $this->_module, $type, $view);
-        
+                \CodersApp::appRoot($this->get('endpoint')),
+                $this->get('module'), $type, $view);
         return $path;
     }
     /**
-     * @param string $application
-     * @param string $module
-     * @return \CODERS\Framework\Renderer
+     * @param string $asset
+     * @return URL|String
      */
-    public function setup( $application , $module ){
-
-        $this->_app = $application;
-
-        $this->_module = $module;
-
-        return $this;
+    protected function assetUrl( $asset ) {
+        return sprintf('%s/plugins/%s/modules/%s/assets/%s',
+                get_site_url(),
+                $this->get('endpoint'),
+                $this->get('module'),
+                $asset);
     }
-    //private $_html = NULL;
+    /**
+     * @param string $url
+     * @return boolean
+     */
+    private function matchUrl( $url ){
+        return preg_match('/^(http|https):\/\//',$url) > 0;
+    }
     /**
      * @param string $name
      * @return mixed
      */
     public function __get($name) {
-        
-        if( preg_match('/^input_/', $name) ){
-            return $this->__input(substr($name, 6));
-        }
-        elseif( preg_match(  '/^list_[a-z_]*_options$/' , $name ) ){
-            return $this->__options(substr($name, 5, strlen($name) - 5 - 8 ) );
-        }
-        elseif( preg_match(  '/^list_/' , $name ) ){
-            return $this->__options(substr($name, 5));
-        }
-        elseif( preg_match(  '/^value_/' , $name ) ){
-            return $this->__value(substr($name, 6));
-        }
-        elseif( preg_match(  '/^display_/' , $name ) ){
-            return $this->__display(substr($name, 8));
-        }
-        elseif( preg_match(  '/^label_/' , $name ) ){
-            return $this->__label(substr($name, 6));
+    
+        switch( true ){
+            case preg_match('/^input_/', $name):
+                return $this->__input(substr($name, 6));
+            case preg_match(  '/^list_[a-z_]*_options$/' , $name ):
+                return $this->__options(substr($name, 5, strlen($name) - 5 - 8 ) );
+            case preg_match(  '/^list_/' , $name ):
+                return $this->__options(substr($name, 5));
+            case preg_match(  '/^value_/' , $name ):
+                return $this->__value(substr($name, 6));
+            case preg_match(  '/^import_/' , $name ):
+                return $this->__import(substr($name, 7));
+            case preg_match(  '/^display_/' , $name ):
+                return $this->__display(substr($name, 8));
+            case preg_match(  '/^label_/' , $name ):
+                return $this->__label(substr($name, 6));
+            case preg_match(  '/^get_/' , $name ):
+                $get = substr($name, 6);
+                return !is_null($this->_model) && $this->_model->has($get) ?
+                    $this->_model->get($get) : '';
         }
         
         return parent::get($name);
@@ -80,7 +116,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param mixed $content
      * @return String|HTML HTML output
      */
-    protected static function __html( $tag, $attributes = array( ), $content = NULL ){
+    protected static function __HTML( $tag, $attributes = array( ), $content = NULL ){
         
         if( isset( $attributes['class'])){
             if(is_array($attributes['class'])){
@@ -229,23 +265,112 @@ abstract class Renderer extends \CODERS\Framework\Component{
         return $name;
     }
     /**
+     * @param string $display
+     * @return string|html
+     */
+    protected function __display( $display ){
+        
+        if(strlen($display)){
+            $callback = sprintf('display%s',$display);
+
+            return method_exists($this, $callback) ?
+                    $this->$callback() :
+                    sprintf('<!-- display_%s not found -->',$display);
+
+        }
+        
+        return '<!-- no display defined -->';
+    }
+    /**
      * 
      * @param string $display
      * @return string
      */
-    public function __display( $display ){
-
-        $path = $this->getView($display);
-        
+    protected function __import( $display ){
+        $path = $this->viewPath($display);
         if(file_exists($path )){
-        
             require $path;
         }
-        
-        return sprintf('<!-- display_%s -->',$display);
+        else{
+            return sprintf('<!-- display_%s not found -->',$display);
+        }
     }
-    public function __render( $render ){
-        return '';
+    /**
+     * @return string | HTML
+     */
+    protected function displayLogo() {
+
+        return function_exists('get_custom_logo') ?
+                get_custom_logo() :
+                self::__HTML('a', array(
+                    'class'=>'theme-logo',
+                    'href'=> get_site_url(),
+                    'target' => '_self'
+                ), get_bloginfo('name'));
+    }
+    /**
+     * @return URL Url de desconexión de la sesión de WP
+     */
+    public static final function displayLogOut(){
+        return wp_logout_url( site_url() );
+    }
+    /**
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected function renderHeader(){
+        wp_head();
+        printf('<body class="%s">' , implode(' ', $this->mergeBodyClasses()));
+        return $this;
+    }
+    /**
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected function renderFooter(){
+        wp_footer();
+        printf('</body>');
+        return $this;
+    }
+    /**
+     * @param strig $layout
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected function renderContent( $layout ){
+        
+        $path = $this->viewPath($layout, 'layout');
+        if(file_exists($path)){
+            require $path;
+        }
+        else{
+            printf('<!-- LAYOUT %s NOT FOUND -->',$path);
+        }
+
+        return $this;
+    }
+    /**
+     * 
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    public function render( $layout ) {
+
+        //HEADER & OPEN DOCUMENT
+        return $this->renderHeader()
+                ->renderContent( $layout )
+                ->renderFooter();
+    }
+    /**
+     * @return array
+     */
+    protected function mergeBodyClasses(){
+        
+        $classes = get_body_class();
+
+        foreach( $this->_classes as $cls ){
+            if( !in_array($cls, $classes)){
+                $classes[] = $cls;
+            }
+        }
+        
+        return $classes;
     }
     /**
      * <meta />
@@ -253,7 +378,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param string $name
      * @return HTML
      */
-    public function renderMeta( array $attributes , $name = null ){
+    public static function renderMeta( array $attributes , $name = null ){
         
         if( !is_null($name)){
 
@@ -273,7 +398,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
             }
         }
         
-        return $this->__html('meta', $attributes );
+        return self::__HTML('meta', $attributes );
     }
     /**
      * <link />
@@ -282,13 +407,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $attributes
      * @return HTML
      */
-    public static final function renderExternalLink( $url , $type , array $attributes = array( ) ){
+    public static final function renderLink( $url , $type , array $attributes = array( ) ){
         
         $attributes[ 'href' ] = $url;
         
         $attributes[ 'type' ] = $type;
         
-        return self::__html( 'link', $attributes );
+        return self::__HTML( 'link', $attributes );
     }
     /**
      * <a href />
@@ -297,7 +422,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function renderLink( $url , $label , array $atts = array( ) ){
+    protected static function renderAction( $url , $label , array $atts = array( ) ){
         
         $atts['href'] = $url;
         
@@ -305,7 +430,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
             $atts['target'] = '_self';
         }
         
-        return self::__html('a', $atts, $label);
+        return self::__HTML('a', $atts, $label);
     }
     /**
      * <ul></ul>
@@ -314,17 +439,17 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param mixed $itemClass
      * @return HTML
      */
-    public static function renderListUnsorted( array $content , array $atts , $itemClass = '' ){
+    protected static function renderListUnsorted( array $content , array $atts , $itemClass = '' ){
         
         $collection = array();
         
         foreach( $content as  $item ){
             $collection[] = !empty($itemClass) ?
-                    self::__html('li', array('class'=>$itemClass) , $item ) :
-                    self::__html('li', array(), $item ) ;
+                    self::__HTML('li', array('class'=>$itemClass) , $item ) :
+                    self::__HTML('li', array(), $item ) ;
         }
         
-        return self::__html( 'ul' , $atts ,  $collection );
+        return self::__HTML( 'ul' , $atts ,  $collection );
     }
     /**
      * <ol></ol>
@@ -333,17 +458,17 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param mixed $itemClass
      * @return HTML
      */
-    public static function renderListOrdered( array $content , array $atts , $itemClass = '' ){
+    protected static function renderListOrdered( array $content , array $atts , $itemClass = '' ){
         
         $collection = array();
         
         foreach( $content as  $item ){
             $collection[] = !empty($itemClass) ?
-                    self::__html('li', array('class'=>$itemClass) , $item ) :
-                    self::__html('li', array(), $item ) ;
+                    self::__HTML('li', array('class'=>$itemClass) , $item ) :
+                    self::__HTML('li', array(), $item ) ;
         }
         
-        return self::__html( 'ol' , $atts ,  $collection );
+        return self::__HTML( 'ol' , $atts ,  $collection );
     }
     /**
      * <span></span>
@@ -351,8 +476,8 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static final function renderSpan( $content , $atts = array( ) ){
-        return self::__html('span', $atts , $content );
+    protected static final function renderSpan( $content , $atts = array( ) ){
+        return self::__HTML('span', $atts , $content );
     }
     /**
      * <img src />
@@ -360,11 +485,11 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static final function renderImage( $src , array $atts = array( ) ){
+    protected static final function renderImage( $src , array $atts = array( ) ){
         
         $atts['src'] = $src;
         
-        return self::__html('img', $atts);
+        return self::__HTML('img', $atts);
     }
     /**
      * <label></label>
@@ -373,9 +498,9 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param mixed $class
      * @return HTML
      */
-    public static function renderLabel( $text , array $atts = array() ){
+    protected static function renderLabel( $text , array $atts = array() ){
 
-        return self::__html('label', $atts, $text);
+        return self::__HTML('label', $atts, $text);
     }
     /**
      * <input type="number" />
@@ -384,7 +509,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputNumber( $name, $value = 0, array $atts = array() ){
+    protected static function inputNumber( $name, $value = 0, array $atts = array() ){
         
         if( !isset($atts['min'])){ $atts['min'] = 0; }
 
@@ -398,7 +523,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
         
         $atts['type'] = 'number';
         
-        return self::__html('input', $atts);
+        return self::__HTML('input', $atts);
     }
     /**
      * <span class="price" />
@@ -407,13 +532,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param string $coin
      * @return HTML
      */
-    public static function price( $name, $value = 0.0, $coin = '&eur', array $atts = array() ){
+    protected static function price( $name, $value = 0.0, $coin = '&eur', array $atts = array() ){
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         
-        return self::__html('span',
+        return self::__HTML('span',
                 $atts ,
-                $value . self::__html('span', array('class'=>'coin'), $coin));
+                $value . self::__HTML('span', array('class'=>'coin'), $coin));
     }
     /**
      * <textarea></textarea>
@@ -421,12 +546,12 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param string $value
      * @param array $atts
      */
-    public static function inputTextArea( $name, $value = '', array $atts = array() ){
+    protected static function inputTextArea( $name, $value = '', array $atts = array() ){
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         
-        return self::__html('textarea', $atts, $value);
+        return self::__HTML('textarea', $atts, $value);
     }
     /**
      * <input type="text" />
@@ -435,13 +560,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputText($name, $value = '', array $atts = array() ){
+    protected static function inputText($name, $value = '', array $atts = array() ){
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'text';
         
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="password" />
@@ -449,11 +574,11 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputPassword( $name, array $atts = array() ){
+    protected static function inputPassword( $name, array $atts = array() ){
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['type'] = 'password';
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="search" />
@@ -462,13 +587,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputSearch( $name, $value = '' , array $atts = array() ){
+    protected static function inputSearch( $name, $value = '' , array $atts = array() ){
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'search';
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="date" />
@@ -479,13 +604,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputDate($name, $value = '', array $atts = array() ){
+    protected static function inputDate($name, $value = '', array $atts = array() ){
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'date';
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="tel" />
@@ -494,13 +619,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputTelephone($name, $value = null, array $atts = array() ){
+    protected static function inputTelephone($name, $value = null, array $atts = array() ){
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'tel';
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="email" />
@@ -509,13 +634,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputEmail($name, $value = '', array $atts = array() ){
+    protected static function inputEmail($name, $value = '', array $atts = array() ){
         
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'email';
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * <input type="checkbox" />
@@ -524,14 +649,14 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputCheckBox( $name, $checked = false , $value = 1, array $atts = array() ){
+    protected static function inputCheckBox( $name, $checked = false , $value = 1, array $atts = array() ){
         
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
         $atts['name'] = $name;
         $atts['value'] = $value;
         $atts['type'] = 'checkbox';
         if($checked){ $atts['checked'] = 1; }
-        return self::__html( 'input' , $atts );
+        return self::__HTML( 'input' , $atts );
     }
     /**
      * Lista de opciones <input type="radio" />
@@ -541,7 +666,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputOptionList( $name, array $options, $value = null, array $atts = array( ) ){
+    protected static function inputOptionList( $name, array $options, $value = null, array $atts = array( ) ){
 
 
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name );
@@ -563,13 +688,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
                 $optionAtts['checked'] = 'checked';
             }
             
-            $radioItems[ ] = self::__html(
+            $radioItems[ ] = self::__HTML(
                     'li',
                     array(),
-                    self::__html( 'input', $optionAtts, $label) );
+                    self::__HTML( 'input', $optionAtts, $label) );
         }
         
-        return self::__html('ul', $atts, implode('</li><li>',  $radioItems));
+        return self::__HTML('ul', $atts, implode('</li><li>',  $radioItems));
     }
     /**
      * <select size="5" />
@@ -579,7 +704,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputList($name, array $options, $value = null, array $atts = array() ){
+    protected static function inputList($name, array $options, $value = null, array $atts = array() ){
         
         if( !isset($atts['id']) ){
             preg_replace('/-/', '_',  $name );
@@ -597,13 +722,13 @@ abstract class Renderer extends \CODERS\Framework\Component{
         }
         
         foreach( $options as $option => $label ){
-            $items[] = self::__html(
+            $items[] = self::__HTML(
                     'option',
                     $option == $value ? array('value'=> $option,'selected') : array('value'=>$option),
                     $label);
         }
         
-        return self::__html('select', $atts, $options );
+        return self::__HTML('select', $atts, $options );
     }
     /**
      * <select size="1" />
@@ -613,7 +738,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputDropDown($name, array $options, $value = null, array $atts = array() ){
+    protected static function inputDropDown($name, array $options, $value = null, array $atts = array() ){
         
         $atts['size'] = 1;
         
@@ -629,7 +754,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      */
     public static function inputHidden( $name, $value ){
         
-        return self::__html('input', array(
+        return self::__HTML('input', array(
             'type' => 'hidden',
             'name' => $name,
             'value' => $value,
@@ -640,7 +765,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param string $name
      * @return HTML
      */
-    public static function inputFile( $name , array $atts = array( ) ){
+    protected static function inputFile( $name , array $atts = array( ) ){
         
         $max_filesize = 'MAX_FILE_SIZE';
         
@@ -655,7 +780,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
             unset($atts[$max_filesize]);
         }
         
-        return self::inputHidden( $max_filesize, $file_size ) . self::__html('file', $atts );
+        return self::inputHidden( $max_filesize, $file_size ) . self::__HTML('file', $atts );
     }
     /**
      * <button type="*" />
@@ -665,7 +790,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputButton( $name, $value , $content, array $atts = array( ) ){
+    protected static function inputButton( $name, $value , $content, array $atts = array( ) ){
         
         $atts['value'] = $value;
         $atts['id'] = 'id_' . preg_replace('/-/', '_',  $name ) . '_' . $value;
@@ -673,7 +798,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
         if( !isset($atts['type'])){
             $atts['type'] = 'button';
         }
-        return self::__html('button', $atts, $content);
+        return self::__HTML('button', $atts, $content);
     }
     /**
      * <button type="submit" />
@@ -683,7 +808,7 @@ abstract class Renderer extends \CODERS\Framework\Component{
      * @param array $atts
      * @return HTML
      */
-    public static function inputSubmit( $name , $value , $label , array $atts = array( ) ){
+    protected static function inputSubmit( $name , $value , $label , array $atts = array( ) ){
         
         return self::inputButton($name,
                 $value,
@@ -691,19 +816,42 @@ abstract class Renderer extends \CODERS\Framework\Component{
                 array_merge( $atts , array( 'type'=>'submit' ) ));
     }
 
+
+    /**
+     * @return string
+     */
+    public final function getEndPoint(){
+        return $this->get('endpoint', '');
+    }
+    /**
+     * @return string
+     */
+    public final function getModule(){
+        return $this->get('module', '');
+    }
+    /**
+     * @return string
+     */
+    public final function getContext(){
+        return $this->get('context', '');
+    }
     /**
      * @param string $title
      * @return \CODERS\Framework\Views\Renderer
      */
     public final function setTitle( $title ){
         
-        $this->_title = $title;
-        
-        return $this;
+        return $this->set('title', $title );
+    }
+    /**
+     * @return string
+     */
+    public final function getTitle(){
+        return $this->get('title', '');
     }
     /**
      * @param \CODERS\Framework\IModel $model
-     * @return \CODERS\Framework\Views\Renderer Instancia para chaining
+     * @return \CODERS\Framework\Views\Renderer
      */
     public function setModel( \CODERS\Framework\IModel $model ){
 
@@ -712,9 +860,215 @@ abstract class Renderer extends \CODERS\Framework\Component{
         return $this;
     }
     /**
-     * @return \CODERS\Framework\IModel Modelo de datos
+     * @return \CODERS\Framework\IModel
      */
     protected function getModel(){ return $this->_model; }
+
+    
+    /**
+     * Inicializa las dependencias del componente
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    private final function registerAssets(  ){
+
+        $metas = $this->_metas;
+        $links = $this->_links;
+        $styles = $this->_styles;
+        $scripts = $this->_scripts;
+        
+        $hook = is_admin() ? 'admin_enqueue_scripts' : 'wp_enqueue_scripts';
+        
+        //public metas and linnks
+        if ( !is_admin() && class_exists('\CODERS\Framework\Views\HTML')) {
+
+            add_action('wp_head', function() use( $metas, $links ) {
+                foreach ($metas as $meta_id => $atts) {
+                    print \CODERS\Framework\Views\Renderer::renderMeta($atts, $meta_id);
+                }
+                foreach ($links as $link_id => $atts) {
+                    print \CODERS\Framework\Views\Renderer::renderLink(
+                                    $atts['href'], $atts['type'], 
+                                    array_merge($atts, array('id' => $link_id)));
+                }
+            });
+        }
+        //styles
+        add_action( $hook, function() use( $styles ) {       
+            foreach ($styles as $style_id => $url) {
+                wp_enqueue_style($style_id, $url);
+            }
+        });
+        //Scripts
+        add_action( $hook , function() use( $scripts ) {
+            foreach ($scripts as $script_id => $content) {
+                if (isset($content['deps'])) {
+                    wp_enqueue_script(
+                            $script_id,
+                            $content['url'],
+                            $content['deps'],
+                            false, TRUE);
+                }
+                else {
+                    wp_enqueue_script(
+                            $script_id,
+                            $content['url'],
+                            array(), false, TRUE);
+                }
+            }
+        });
+        return $this;
+    }
+    /**
+     * @param string $classes
+     * @return \CODERS\Framework\Views\DocumentRender
+     */
+    protected function addClass( $classes ){
+        
+        if(!is_array($classes)){
+            $classes = explode(' ', $classes);
+        }
+        
+        foreach( $classes as $cls ){
+            if( !in_array($cls, $this->_classes)){
+                $this->_classes[] = $cls;
+            }
+        }
+        
+        return $this;
+    }
+    /**
+     * Registra un meta en la cabecera
+     * @param string $meta_id
+     * @param array $attributes
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected final function addMeta( $meta_id , array $attributes ){
+        
+        if( !isset( $this->_metas[ $meta_id ] ) ){
+            $this->_metas[$meta_id] = $attributes;
+        }
+        
+        return $this;
+    }
+    /**
+     * Registra un link en la cabecera
+     * @param string $link_id
+     * @param string $link_url
+     * @param array $attributes
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected final function addLink( $link_id , $link_url , array $attributes = null ){
+        if( !isset( $this->_links[ $link_id ] ) ){
+            if(is_null($attributes)){
+                $attributes[ 'href' ] = $link_url;
+            }
+            else{
+                $attributes[ 'href' ] = $link_url;
+            }
+            $this->_links[$link_id] = $attributes;
+        }
+        
+        return $this;
+    }
+    /**
+     * Registra un estilo
+     * @param string $id
+     * @param string $style
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected final function addStyle( $id , $style ){
+        
+        if(strlen($style)){
+
+            if( !isset( $this->_styles[ $id ] ) ){
+
+                if( !$this->matchUrl($style) ){
+
+                    $style = $this->assetUrl($style);
+                }
+
+                $this->_styles[$id] = $style;
+            }
+        }
+        
+        return $this;
+    }
+    /**
+     * Registra un script
+     * @param string $id
+     * @param string $script
+     * @param mixed $deps Dependencias del script
+     * @return \CODERS\Framework\Views\Renderer
+     */
+    protected final function addScript( $id , $script , $deps = null ){
+        
+        if( !isset( $this->_scripts[ $id ] ) ){
+            
+            if( !$this->matchUrl($script) ){
+                
+                $script = $this->assetUrl($script);
+            }
+
+            $this->_scripts[$id] = array( 'url' => $script );
+            
+            if( !is_null($deps)){
+                $this->_scripts[$id]['deps'] = !is_array($deps) ? explode( ',', $deps ) : $deps;
+            }
+        }
+        
+        return $this;
+    }
+    /**
+     * Registra una fuente de Google Fonts
+     * @param string $font
+     * @param mixed $weight
+     */
+    protected final function addFont( $font , $weight = null ){
+        
+        $font_id = 'font-' . preg_replace( '/ /' , '-' , strtolower($font));
+
+        $font_url = self::GOOGLE_FONTS_URL . '=' . $font ;
+        
+        if( !is_null($weight)){
+
+            if( !is_array($weight)){
+ 
+                $weight = explode( ',' , $weight );
+            }
+            
+            $font_url .= ':' . implode(',', $weight);
+        }
+        
+        return $this->addStyle( $font_id, $font_url );
+    }
+    /**
+     * 
+     * @param string $endpoint
+     * @param string $module
+     * @return boolean|\CODERS\Framework\Views\Renderer
+     */
+    public static final function create( $endpoint , $module ){
+        
+        if( \CodersApp::loaded($endpoint)){
+            
+            $path = sprintf( '%s/modules/%s/views/%s.view.php',
+                    \CodersApp::appRoot($endpoint),
+                    $module, strtolower($module) );
+
+            $class = $module.'View';
+            
+            if(file_exists($path)){
+
+                require_once $path;
+                
+                if(class_exists($class) && is_subclass_of($class, self::class)){
+                    return new $class( $endpoint , $module );
+                }
+            }
+        }
+        
+        return FALSE;
+    }
 }
 
 

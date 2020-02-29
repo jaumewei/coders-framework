@@ -30,11 +30,11 @@ class Request{
     /**
      * @param \CodersApp $ep
      */
-    private function __construct( \CodersApp $app , array $input = array( ) ) {
+    private function __construct( $endpoint , array $input = array( ) ) {
         
-        $this->_endPoint = $app->endPointName();
+        $this->_endPoint = $endpoint;
         
-        $this->_epk = $app->endPointKey();
+        $this->_epk = \CodersApp::importKey( $this->_endPoint );
         
         $this->_ts = time();
         
@@ -97,11 +97,9 @@ class Request{
         $output = [];
         
         foreach( $input as $key => $val ){
-        
             $in = explode('.', $key);
-            
             if( count( $in ) === 2 && $in[0] === $epk ){
-                $output[ $key[ 1 ] ] = strip_tags($val);
+                $output[ $key[ 1 ] ] = strip_tags( $val );
             }
         }
         
@@ -333,36 +331,25 @@ class Request{
                 $input );
     }
     /**
-     * @param \CodersApp $app
+     * @param \CodersApp $endpoint
      * @return \CODERS\Framework\Request
      */
-    public static final function import( \CodersApp $app ){
+    public static final function import( $endpoint ){
         
         $get = filter_input_array(INPUT_GET);
         
         $post = filter_input_array(INPUT_GET);
 
+        $epk = \CodersApp::importKey( $endpoint );
+
         if(is_null($get)){ $get = array(); }
         
         if(is_null($post)){ $post = array(); }
-
-        return new Request( $app , self::filterInput( array_merge( $get , $post ), $app->endPointKey() ) );
+        
+        return new Request( $endpoint , self::filterInput(
+                array_merge( $get , $post ),
+                $epk ) );
     }
-    /**
-     * @return \CODERS\Framework\Request
-     */
-    /*public static final function framework( ){
-        
-        $get = filter_input_array(INPUT_GET);
-        
-        $post = filter_input_array(INPUT_GET);
-
-        if(is_null($get)){ $get = array(); }
-        
-        if(is_null($post)){ $post = array(); }
-
-        return new Request( 'root', self::filterInput(array_merge($get,$post), 'coders' ) );
-    }*/
 }
 
 
