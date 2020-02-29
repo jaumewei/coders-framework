@@ -24,20 +24,20 @@ abstract class Component{
     /**
      * @return array
      */
-    public function __settings(){
+    protected function __settings(){
 
         return $this->_settings;
     }
     /**
      * @return string
      */
-    public function __class(){
+    protected function __class(){
         return get_class($this);
     }
     /**
      * @return string
      */
-    public function __nominalize(){
+    protected function __nominalize(){
         return \CodersApp::nominalize($this);
     }
     /**
