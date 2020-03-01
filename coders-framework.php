@@ -47,7 +47,7 @@ abstract class CodersApp{
     /**
      * @var \CODERS\Framework\Response[]
      */
-    private $_adminOptions = array(
+    private $_menu = array(
         //
     );
     /**
@@ -86,15 +86,32 @@ abstract class CodersApp{
      */
     protected function __construct( $key = '' ) {
         //end point name
-        $this->_EPN = strval($this);
+        $this->_EPN = $this->generaeEndPoint();
         //end point key
-        $this->_EPK = strlen($key) > 3 ? $key : self::generateAppKey($this->_EPN);
+        $this->_EPK = strlen($key) > 3 ? $key : $this->generateAppKey($this->_EPN);
+        
+        self::initComponents($this->__components());
+
+        $this->registerMenu();
+        
+        //self::registerEndPoint($this->_EPN, $this)
     }
     /**
      * CORE COMPONENT DEFINITION
      * @var array
      */
     private static final function __framework(){
+        return array(
+            self::TYPE_CORE => array(
+                'request'
+            )
+        );
+    }
+    /**
+     * CORE COMPONENT DEFINITION
+     * @var array
+     */
+    private static final function __instance(){
         return array(
             self::TYPE_INTERFACES => array(
                 'service',
@@ -113,6 +130,12 @@ abstract class CodersApp{
                 'service',
             ),
         );
+    }
+    /**
+     * @return array
+     */
+    private final function __components(){
+        return $this->_components;
     }
     /**
      * @return string
@@ -187,13 +210,13 @@ abstract class CodersApp{
      */
     protected function registerAdminOption( $option ){
         if( is_admin( ) ){
-            if( !array_key_exists( $option , $this->_adminOptions ) ){
+            if( !array_key_exists( $option , $this->_menu ) ){
                 $response = \CODERS\Framework\Response::create(
                         $this,
                         $option,
                         TRUE );
                 if( $response !== FALSE ){
-                    $this->_adminOptions[ $response->getName( ) ] = $response;
+                    $this->_menu[ $response->getName( ) ] = $response;
                 }
             }
         }
@@ -203,9 +226,9 @@ abstract class CodersApp{
      * Redirect End Point URL
      * @return \CodersApp
      */
-    private final function registerCodersMenu(){
+    private final function registerMenu(){
         if( is_admin( ) ){
-            $adminMenu = &$this->_adminOptions;
+            $adminMenu = &$this->_menu;
             add_action( 'admin_menu', function( ) use( $adminMenu ){
                 foreach ( $adminMenu as $option => $controller) {
 
@@ -287,13 +310,14 @@ abstract class CodersApp{
                 /*SETUP RESPONSE*/
                 add_action( 'template_redirect', function() use( $endpoint ){
                     $alias = \CodersApp::importRoute($endpoint);
-                    if ( \CodersApp::queryRoute( $alias ) ) {
+                    $request = \CodersApp::request($alias);
+                    if ( $request !== FALSE ) {
                         /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                         global $wp_query;
                         //blow up 404 errors here
                         $wp_query->set('is_404', FALSE);
                         //and execute the response
-                        \CodersApp::run( $endpoint );
+                        \CodersApp::run( $request );
                         //then terminate app and wordpressresponse
                         //do_action('finalize');
                         exit;
@@ -303,13 +327,6 @@ abstract class CodersApp{
             }
         }
         return FALSE;
-    }
-    /**
-     * @param string $value
-     * @return string
-     */
-    public static final function generateId( $value = '' ){
-        return md5( uniqid(strval($this) . date('YmdHis') . $value , true) );
     }
     /**
      * @param string $endpoint
@@ -354,19 +371,19 @@ abstract class CodersApp{
         return $route;
     }
     /**
-     * @param string $endpoint
+     * @param \CODERS\Framework\Request
      * @return \CodersApp | function | boolean
      */
-    public static final function run( $endpoint ){
-        if(array_key_exists($endpoint, self::$_endpoints)){
-            $app = self::$_endpoints[ $endpoint ];
+    public static final function run( \CODERS\Framework\Request $request ){
+        if(array_key_exists($request->endPoint(), self::$_endpoints)){
+            $app = self::$_endpoints[ $request->endPoint() ];
             switch( TRUE ){
                 case is_object($app) && is_subclass_of($app, self::class):
                     //mvc setup
-                    return $app->response( self::request( $endpoint ) );
+                    return $app->response( $request );
                 case is_callable($app):
                     //custom function setup
-                    return $app( self::request($endpoint) );
+                    return $app( $request );
                 default:
                     //invalid endpoint application!!
                     break;
@@ -379,14 +396,10 @@ abstract class CodersApp{
      */
     public final function epk(){ return $this->_EPK; }
     /**
+     * 
      * @return string
      */
-    public final function endPoint( ){
-        
-        $class = explode('\\', get_class($this));
-        
-        return self::nominalize($class[ count($class) - 1 ]);
-    }
+    public final function endPoint(){ return $this->_EPN; }
     /**
      * @param \CODERS\Framework\Request $R
      * @return \CodersApp
@@ -407,10 +420,16 @@ abstract class CodersApp{
      */
     public static final function request( $endpoint ){
 
-        /**
-         * import request
-         */
-        return \CODERS\Framework\Request::import( $endpoint );
+        global $wp;
+
+        $query = $wp->query_vars;
+
+        //is permalink route
+        return ( array_key_exists($endpoint, $query) ) ||
+                ( array_key_exists('template', $query)
+                && $endpoint === $query['template']) ?
+                    \CODERS\Framework\Request::import( $endpoint ) :
+                    FALSE;
     }
     /**
      * @return \CODERS\Framework\Response
@@ -419,8 +438,8 @@ abstract class CodersApp{
                 
         try{
             if( is_admin() ){
-                if(array_key_exists( $request->getContext( ) , $this->_adminOptions )){
-                    return $this->_adminOptions[ $request->getContext() ]->__execute( $request );
+                if(array_key_exists( $request->getContext( ) , $this->_menu )){
+                    return $this->_menu[ $request->getContext() ]->__execute( $request );
                 }
                 else{
                     throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$request->getContext()));
@@ -530,36 +549,43 @@ abstract class CodersApp{
     }
     /**
      * @author Coder01 <coder01@mnkcoder.com>
-     * @param string $endpoint
+     * @param string $path
      * @return \CodersApp
      */
-    public static final function create( $endpoint ){
+    public static final function create( $path ){
 
+        $dir = explode('/', preg_replace('/\\\\/', '/', $path));
+        
+        $endpoint = $dir[ count( $dir ) - 1 ];
+        
         if ( strlen($endpoint) && !self::loaded($endpoint) ){
             
-            $path = sprintf('%s/../%s/application.php',__DIR__,$endpoint);
+            //$appPath = sprintf('%s/../%s/application.php',__DIR__,$endpoint);
+            $appPath = sprintf('%s/application.php',$path);
 
             $class = self::classify($endpoint);
 
             try{
-                if(file_exists($path)){
+                if(file_exists($appPath)){
 
-                    require_once $path;
+                    require_once $appPath;
 
                     if(class_exists($class) && is_subclass_of( $class , self::class , TRUE ) ){
-
+                        //init required componentes before instance
+                        self::initComponents(self::__instance());
+                        //instance app
                         $app = new $class( );
-
+                        //register and 
                         return self::registerEndPoint(
                                 $app->endPoint(),
-                                $app->registerCodersMenu());
+                                $app);
                     }
                     else{
                         throw new Exception(sprintf('INVALID_APPLICATION [%s]',$class) );
                     }
                 }
                 else{
-                    throw new Exception(sprintf('INVALID_PATH [%s]',$path) );
+                    throw new Exception(sprintf('INVALID_PATH [%s]',$appPath) );
                 }
             }
             catch (Exception $ex) {
@@ -702,15 +728,28 @@ abstract class CodersApp{
         return is_admin();
     }
     /**
-     * @param string $app
+     * @param string $value
      * @return string
      */
-    private static final function generateAppKey( $app ){
+    public static final function generateId( $value = '' ){
+        return md5( uniqid(strval($this) . date('YmdHis') . $value , true) );
+    }
+    /**
+     * @return string
+     */
+    private final function generaeEndPoint( ){
         
-        $key = explode('-', $app);
+        $class = explode('\\', get_class($this));
         
+        return self::nominalize($class[ count($class) - 1 ]);
+    }
+    /**
+     * @param string $endpoint
+     * @return string
+     */
+    private static final function generateAppKey( $endpoint ){
+        $key = explode('-', $endpoint);
         $output = [];
-
         switch( count($key)){
             case 0:
                 return FALSE;
@@ -736,46 +775,66 @@ abstract class CodersApp{
         return implode('', $output);
     }
     /**
-     * Preload installer if required
-     * @return boolean
+     * @param string $path
+     * @param callable $callback
+     * @param string $key 
      */
-    private static final function preloadInstaller(){
-        $class = '\CODERS\Framework\Installer';
-        if( !class_exists($class) ){
-            $path = sprintf('%s/classes/core/installer.class.php',CODERS_FRAMEWORK_BASE);
-            if(file_exists($path)){
-                require_once $path;
+    public static final function __install( $path , $callback , $key = '' ){
+        
+        if(!is_admin()){
+            return;
+        }
+        
+        $dir = explode('/', preg_replace('/\\\\/', '/', $path));
+        
+        $endpoint = $dir[ count( $dir ) - 1 ];
+        
+        if( strlen($key) === 0 ){
+            $key = self::generateAppKey($endpoint);
+        }
+        
+        if(is_callable($callback)){
+            
+            if( $callback( $endpoint , $key ) ){
+            }
+            else{
             }
         }
-        return class_exists('\CODERS\Framework\Installer');
     }
     /**
-     * Creates a setup tool to activate/deactivate applications
-     * @param string $dir
+     * @param string $path
+     * @param callable $callback
      * @param string $key
-     * @return \CODERS\Framework\Installer
      */
-    public static final function installer( $dir , $key = '' ){
-        $node = explode('/', preg_replace('/\\\\/', '/', $dir));
-        $app = $node[ count( $node ) - 1 ];
+    public static final function __uninstall( $path , $callback , $key = '' ){
+        
+        if(!is_admin()){
+            return;
+        }
+        
+        $dir = explode('/', preg_replace('/\\\\/', '/', $path));
+        
+        $endpoint = $dir[ count( $dir ) - 1 ];
+        
         if( strlen($key) === 0 ){
-            $key = self::generateAppKey($app);
+            $key = self::generateAppKey($endpoint);
         }
-        if( self::preloadInstaller( ) ){
-            return \CODERS\Framework\Installer::create($app,$key);
+        if(is_callable($callback)){
+            if( $callback( $endpoint , $key ) ){
+            }
+            else{
+
+            }
         }
-        return FALSE;
     }
     /**
      * @return boolean
      */
-    public static final function registerFramework(){
+    public static final function init(){
         
         if( !defined('CODERS_FRAMEWORK_BASE')){
-
             //first instance to call
             define('CODERS_FRAMEWORK_BASE',__DIR__);
-            
             try{
                 //register all core components
                 self::initComponents( self::__framework() );
@@ -809,7 +868,7 @@ abstract class CodersApp{
 /**
  * Inicializar aplicación
  */
-CodersApp::registerFramework();
+CodersApp::init();
 
 
 
