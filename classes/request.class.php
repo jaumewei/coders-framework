@@ -12,9 +12,9 @@ defined('ABSPATH') or die;
  */
 class Request{
     //tipo de evento genérico adjuntando datos GET y/o POST
-    const EVENT_COMMAND = '_action';
+    const ACTION = '_action';
     //tipo de evento de contexto de la aplicación para cargar el módulo apropiado
-    const EVENT_CONTEXT = '_context';
+    const CONTEXT = '_context';
 
     private $_EP;
     private $_key;
@@ -40,10 +40,10 @@ class Request{
         
         foreach( $input as $var => $val ){
             switch( $var ){
-                case self::EVENT_CONTEXT:
+                case self::CONTEXT:
                     $this->_context = $val;
                     break;
-                case self::EVENT_COMMAND:
+                case self::ACTION:
                     $this->_action = $val;
                     break;
                 default:
@@ -92,15 +92,25 @@ class Request{
      * @param string $epk
      * @return array
      */
-    private static final function filterInput( array $input , $epk ){
+    private static final function filterInput( array $input , $epk = '' ){
         
         $output = [];
         
+        //var_dump($input);
+        
         foreach( $input as $key => $val ){
-            $in = explode('.', $key);
-            if( count( $in ) === 2 && $in[0] === $epk ){
-                $output[ $key[ 1 ] ] = strip_tags( $val );
+            switch( TRUE ){
+                case $key === self::ACTION:
+                case $key === self::CONTEXT:
+                    $output[ $key ] = $val;
+                    break;
+                case preg_match( sprintf( '/^%s/', $epk . '_' ) , $key):
+                    $output[ substr( $key, strlen($epk)+1) ] = strip_tags( $val );
+                    break;
             }
+            //if( count( $in ) === 2 && $in[0] === $epk ){
+            //    $output[ $key[ 1 ] ] = strip_tags( $val );
+            //}
         }
         
         return $output;
@@ -110,14 +120,14 @@ class Request{
      * @return string
      */
     public static final function prefixContext(){
-        return self::prefixAttach(self::EVENT_CONTEXT);
+        return self::prefixAttach(self::CONTEXT);
     }
     /**
      * Retorna la variable de contexto con el prefijo requerido
      * @return string
      */
     public static final function prefixAction(){
-        return self::prefixAttach(self::EVENT_COMMAND);
+        return self::prefixAttach(self::ACTION);
     }
     /**
      * Agrega un valor
@@ -331,24 +341,58 @@ class Request{
                 $input );
     }
     /**
+     * @global \WP $wp
+     * @return array
+     */
+    public static final function query_vars(){
+        global $wp;
+
+        return $wp->query_vars;
+    }
+    /**
+     * @param int $input
+     * @return array
+     */
+    private static final function __INPUT( $input = INPUT_GET ){
+        $vars = filter_input_array($input);
+        return !is_null($vars) ? $vars : array();
+    }
+    /**
+     * @param \CodersApp $endpoint
+     * @return \CODERS\Framework\Request
+     */
+    /*public static final function import( $endpoint ){
+        
+        $epk = \CodersApp::importKey( $endpoint );
+        
+        return new Request( $endpoint , self::filterInput(
+                array_merge( self::__INPUT(INPUT_GET) , self::__INPUT(INPUT_POST) ),
+                $epk ) );
+    }*/
+    /**
+     * @global \WP $wp
      * @param \CodersApp $endpoint
      * @return \CODERS\Framework\Request
      */
     public static final function import( $endpoint ){
-        
-        $get = filter_input_array(INPUT_GET);
-        
-        $post = filter_input_array(INPUT_GET);
 
-        $epk = \CodersApp::importKey( $endpoint );
+        global $wp;
 
-        if(is_null($get)){ $get = array(); }
+        $query = $wp->query_vars;
+
+        //is permalink route
+        if ( array_key_exists($endpoint, $query) || 
+                ( array_key_exists(\CodersApp::APPQUERY, $query)
+                && $endpoint === $query[\CodersApp::APPQUERY] ) ){
+         
+            $epk = \CodersApp::importKey( $endpoint );
+            
+            return new Request( $endpoint , self::filterInput(
+                    array_merge(self::__INPUT(INPUT_GET),self::__INPUT(INPUT_POST)),
+                    $epk) );
+        }
         
-        if(is_null($post)){ $post = array(); }
-        
-        return new Request( $endpoint , self::filterInput(
-                array_merge( $get , $post ),
-                $epk ) );
+        return FALSE;
     }
 }
 

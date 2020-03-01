@@ -23,6 +23,8 @@ abstract class CodersApp{
     const TYPE_MODELS = 400;
     const TYPE_PLUGINS = 500;
     
+    const APPQUERY = 'app';
+    
     const DEFAULT_EP = 'default';
     /**
      * @var string Base Dir storage for repository setup
@@ -41,7 +43,7 @@ abstract class CodersApp{
     /**
      * @var array
      */
-    private static $_routes = [
+    private $_routes = [
         //ilst here all endpoint translations
     ];
     /**
@@ -208,7 +210,7 @@ abstract class CodersApp{
      * @param string $option
      * @return \CodersApp
      */
-    protected function registerAdminOption( $option ){
+    protected function addMenu( $option ){
         if( is_admin( ) ){
             if( !array_key_exists( $option , $this->_menu ) ){
                 $response = \CODERS\Framework\Response::create(
@@ -261,25 +263,16 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * @param string $endpoint
-     * @param string $alias
      * @param string $route
-     * @param string $locale
+     * @param string $alias
+     * @return \CodersApp
      */
-    public static final function registerRoute( $endpoint , $alias , $route , $locale = '' ){
-        if( !array_key_exists($endpoint, self::$_routes) ){
-            self::$_routes[ $endpoint ] = array();
+    protected final function registerRoute( $route , $alias ){
+
+        if( !array_key_exists($route, $this->_routes)){
+            $this->_routes[ $route ] = $alias;
         }
-        if( !array_key_exists($alias, self::$_routes[$endpoint])){
-            self::$_routes[ $endpoint ][ $alias ] = array();
-            foreach( self::importLocale() as $lang ){
-                self::$_routes[ $endpoint ][ $alias ][ $lang ] = $endpoint;
-            }
-        }
-        if(strlen($locale) < 1 ){
-            $locale = get_locale();
-        }
-        self::$_routes[ $endpoint ][ $alias ][ $locale ] = $route;
+        return $this;
     }
     /**
      * @param string $endpoint
@@ -293,15 +286,16 @@ abstract class CodersApp{
                 self::$_endpoints[ $endpoint ] = $runable;
                 /* SETUP ROUTE | URL */
                 add_action( 'init' , function() use( $endpoint ){
-                    $alias = \CodersApp::importRoute($endpoint);
+                    //$alias = \CodersApp::importRoute($endpoint);
                     global $wp, $wp_rewrite;
-                    $wp->add_query_var('template');
-                    add_rewrite_endpoint($alias, EP_ROOT);
+                    $wp->add_query_var(self::APPQUERY);
+                    //$wp->add_query_var('module');
+                    add_rewrite_endpoint($endpoint, EP_ROOT);
                     $wp_rewrite->add_rule(
                             //friendly URL setup
-                            sprintf('^/%s/?$', $alias),
+                            sprintf('^/%s/?$', $endpoint),
                             //GET url setup
-                            sprintf('index.php?template=', $alias),
+                            sprintf('index.php?%s=',self::APPQUERY, $endpoint),
                             //priority
                             'bottom');
                     //and rewrite
@@ -309,16 +303,11 @@ abstract class CodersApp{
                 } );
                 /*SETUP RESPONSE*/
                 add_action( 'template_redirect', function() use( $endpoint ){
-                    $alias = \CodersApp::importRoute($endpoint);
-                    $request = \CodersApp::request($alias);
+                    $request = \CODERS\Framework\Request::import($endpoint);
                     if ( $request !== FALSE ) {
-                        /* Make sure to set the 404 flag to false, and redirect  to the contact page template. */
                         global $wp_query;
-                        //blow up 404 errors here
                         $wp_query->set('is_404', FALSE);
-                        //and execute the response
                         \CodersApp::run( $request );
-                        //then terminate app and wordpressresponse
                         //do_action('finalize');
                         exit;
                     }
@@ -333,14 +322,13 @@ abstract class CodersApp{
      * @param string $default
      * @return string
      */
-    public static final function importKey( $endpoint , $default = '_' ){
+    public static final function importKey( $endpoint  ){
         if( array_key_exists($endpoint, self::$_endpoints) &&
             is_subclass_of( self::$_endpoints[ $endpoint ] , self::class ) ){
             
             return self::$_endpoints[  $endpoint ]->epk();
-        } 
-        
-        return $default;
+        }
+        return '';
     }
     /**
      * @param String $route
@@ -418,7 +406,7 @@ abstract class CodersApp{
      * @return \CODERS\Framework\Request
      * @throws Exception
      */
-    public static final function request( $endpoint ){
+    /*public static final function request( $endpoint ){
 
         global $wp;
 
@@ -426,11 +414,11 @@ abstract class CodersApp{
 
         //is permalink route
         return ( array_key_exists($endpoint, $query) ) ||
-                ( array_key_exists('template', $query)
-                && $endpoint === $query['template']) ?
+                ( array_key_exists(self::APPQUERY, $query)
+                && $endpoint === $query[self::APPQUERY]) ?
                     \CODERS\Framework\Request::import( $endpoint ) :
                     FALSE;
-    }
+    }*/
     /**
      * @return \CODERS\Framework\Response
      */
@@ -438,11 +426,11 @@ abstract class CodersApp{
                 
         try{
             if( is_admin() ){
-                if(array_key_exists( $request->getContext( ) , $this->_menu )){
-                    return $this->_menu[ $request->getContext() ]->__execute( $request );
+                if(array_key_exists( $request->context() , $this->_menu )){
+                    return $this->_menu[ $request->context() ]->__execute( $request );
                 }
                 else{
-                    throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$request->getContext()));
+                    throw new Exception(sprintf('INVALID ADMIN CONTROLLER [%s]',$request->context()));
                 }
             }
             else{
@@ -506,7 +494,7 @@ abstract class CodersApp{
      * @param boolean $isExtension
      * @return \CodersApp
      */
-    protected function register( $component , $type = self::TYPE_MODELS ){
+    protected function addComponent( $component , $type = self::TYPE_MODELS ){
         
         if( $type > self::TYPE_CORE && !array_key_exists($type, $this->_components)
                     && !in_array( $component ,$this->_components[$type]) ){
@@ -689,18 +677,6 @@ abstract class CodersApp{
     public static final function loaded( $endpoint ){
         //return array_key_exists($instance, self::$_instance);
         return array_key_exists($endpoint, self::$_endpoints);
-    }
-    /**
-     * @global type $wp
-     * @param string $endpoint
-     * @return boolean
-     */
-    public static final function queryRoute( $endpoint ){
-        global $wp;
-        $query = $wp->query_vars;
-        return array_key_exists($endpoint, $query) ||       //is permalink route
-                ( array_key_exists('template', $query)      //is post template
-                        && $endpoint === $query['template']);
     }
     /**
      * @return array
