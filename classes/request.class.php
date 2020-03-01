@@ -16,8 +16,8 @@ class Request{
     //tipo de evento de contexto de la aplicación para cargar el módulo apropiado
     const EVENT_CONTEXT = '_context';
 
-    private $_endPoint;
-    private $_epk;
+    private $_EP;
+    private $_key;
     
     private $_input = [];
     //private $_post = [];
@@ -32,9 +32,9 @@ class Request{
      */
     private function __construct( $endpoint , array $input = array( ) ) {
         
-        $this->_endPoint = $endpoint;
+        $this->_EP = $endpoint;
         
-        $this->_epk = \CodersApp::importKey( $this->_endPoint );
+        $this->_key = \CodersApp::importKey( $this->_EP );
         
         $this->_ts = time();
         
@@ -58,7 +58,7 @@ class Request{
     public function __toString() {
         //return strtolower( sprintf('%s.%s.%s.%s',
         return strtolower( sprintf('%s.%s.%s',
-                $this->_epk,
+                $this->_key,
                 //$this->module(),
                 $this->_context,
                 $this->_action) );
@@ -84,7 +84,7 @@ class Request{
      * @return string
      */
     public final function prefix( $input ){
-        return strtolower( sprintf('%s.%s',$this->_epk, $input) );
+        return strtolower( sprintf('%s.%s',$this->_key, $input) );
     }
     /**
      * 
@@ -191,7 +191,7 @@ class Request{
             }
 
             return setcookie(
-                    self::attachPrefix($cookie,$this->_endPoint), $value,
+                    self::attachPrefix($cookie,$this->_EP), $value,
                     time() + ( $time  * 60) );
         }
 
@@ -270,19 +270,19 @@ class Request{
      * @return string
      */
     public final function endPoint(){
-        return $this->_endPoint;
+        return $this->_EP;
     }
     /**
      * @return string
      */
-    public final function endPointKey(){
-        return $this->_epk;
+    public final function key(){
+        return $this->_key;
     }
     /**
      * @return \CodersApp
      */
     public final function getInstance(){
-        return \CodersApp::instance( $this->_endPoint);
+        return \CodersApp::instance( $this->_EP);
     }
     /**
      * @return boolean
@@ -313,7 +313,7 @@ class Request{
         }
         
         if( !is_null($data)){
-            $this->_input = self::filterInput( $data , $this->_epk );
+            $this->_input = self::filterInput( $data , $this->_key );
         }
         
         return $this;
@@ -327,7 +327,7 @@ class Request{
     public static final function create( $app , array $input = array( ) , $filter = FALSE ){
         
         return new Request( $app , $filter ?
-                self::filterInput($input, $app->endPointKey()) :
+                self::filterInput($input, $app->key()) :
                 $input );
     }
     /**
