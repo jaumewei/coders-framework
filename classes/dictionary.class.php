@@ -7,7 +7,7 @@ defined('ABSPATH') or die;
  * 
  * @author Coder01
  */
-abstract class Dictionary {
+abstract class Dictionary{
     
     const DEFAULT_LENGTH = 25;
     
@@ -212,7 +212,6 @@ abstract class Dictionary {
         return array_keys( $this->_content );
     }
     /**
-     * Indica si existe un campo en la definición
      * @param string $field
      * @return bool
      */

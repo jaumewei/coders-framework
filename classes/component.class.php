@@ -11,7 +11,7 @@ abstract class Component{
      * Configuración del componente
      * @var array
      */
-    private $_settings = array();
+    private $_setup = array();
     /**
      * @return string
      */
@@ -26,7 +26,7 @@ abstract class Component{
      */
     protected function __settings(){
 
-        return $this->_settings;
+        return $this->_setup;
     }
     /**
      * @return string
@@ -45,7 +45,7 @@ abstract class Component{
      * @return mixed
      */
     public function __get($name) {
-        return $this->get($name,'');
+        return strval( $this->get($name,'') );
     }
     /**
      * @param string $name
@@ -61,8 +61,8 @@ abstract class Component{
      * @return mixed
      */
     public function get( $var, $default = null ){
-        return isset($this->_settings[$var]) ?
-            $this->_settings[$var] :
+        return isset($this->_setup[$var]) ?
+            $this->_setup[$var] :
             $default;
     }
     /**
@@ -72,7 +72,7 @@ abstract class Component{
      * @return \TripManComponent
      */
     public function set( $var, $val ){
-        $this->_settings[$var] = $val;
+        $this->_setup[$var] = $val;
         return $this;
     }
     /**

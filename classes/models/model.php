@@ -19,6 +19,10 @@ class Model implements \CODERS\Framework\IModel{
     public function __toString() {
         return parent::getName();
     }
+    
+    public function __get($name) {
+        
+    }
 
     public function get($var, $default = null) {
         

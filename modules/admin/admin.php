@@ -1,8 +1,11 @@
-<?php
+<?php namespace CODERS\Framework\Modules;
+
+ defined('ABSPATH') or die;
+ 
 /**
  * 
  */
-final class TestModule extends CodersApp{
+final class AdminModule extends CodersApp{
     
     
     protected function __construct() {

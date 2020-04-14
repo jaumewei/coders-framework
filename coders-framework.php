@@ -91,12 +91,12 @@ abstract class CodersApp{
         $this->_EPN = $this->generaeEndPoint();
         //end point key
         $this->_EPK = strlen($key) > 3 ? $key : $this->generateAppKey($this->_EPN);
-        
-        self::initComponents($this->__components());
 
-        $this->registerMenu();
+        self::initComponents($this->__components());
         
-        //self::registerEndPoint($this->_EPN, $this)
+        if(is_admin( ) ){
+            $this->registerMenu();
+        }
     }
     /**
      * CORE COMPONENT DEFINITION
@@ -116,10 +116,10 @@ abstract class CodersApp{
     private static final function __instance(){
         return array(
             self::TYPE_INTERFACES => array(
-                'service',
-                'plugin',
+                //'service',
+                //'plugin',
                 'model',
-                'template',
+                //'template',
                 'widget'),
             self::TYPE_CORE => array(
                 'component',
@@ -225,53 +225,54 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * Redirect End Point URL
-     * @return \CodersApp
-     */
-    private final function registerMenu(){
-        if( is_admin( ) ){
-            $adminMenu = &$this->_menu;
-            add_action( 'admin_menu', function( ) use( $adminMenu ){
-                foreach ( $adminMenu as $option => $controller) {
-
-                    if (strlen($controller->getParent()) ) {
-                        add_submenu_page(
-                                $controller->getParent(),
-                                $controller->getPageTitle(),
-                                $controller->getOptionTitle(),
-                                $controller->getCapabilities(),
-                                $option,
-                                array($controller, '__execute'),
-                                $controller->getIcon(),
-                                $controller->getPosition());
-                    }
-                    else {
-                        //each item is a Page setup class
-                        add_menu_page(
-                                $controller->getPageTitle(),
-                                $controller->getOptionTitle(),
-                                $controller->getCapabilities(),
-                                $option,
-                                array($controller, '__execute'),
-                                $controller->getIcon(),
-                                $controller->getPosition());
-                    }
-                }
-            }, 10000 );
-        }
-
-        return $this;
-    }
-    /**
      * @param string $route
      * @param string $alias
      * @return \CodersApp
      */
-    protected final function registerRoute( $route , $alias ){
+    protected final function addRoute( $route , $alias ){
 
         if( !array_key_exists($route, $this->_routes)){
             $this->_routes[ $route ] = $alias;
         }
+        return $this;
+    }
+    /**
+     * Redirect End Point URL
+     * @return \CodersApp
+     */
+    private final function registerMenu(){
+        
+        $adminMenu = &$this->_menu;
+        
+        add_action( 'admin_menu', function( ) use( $adminMenu ){
+            
+            foreach ( $adminMenu as $option => $controller) {
+
+                if (strlen($controller->getParent()) ) {
+                    add_submenu_page(
+                            $controller->getParent(),
+                            $controller->getPageTitle(),
+                            $controller->getOptionTitle(),
+                            $controller->getCapabilities(),
+                            $option,
+                            array($controller, '__execute'),
+                            $controller->getIcon(),
+                            $controller->getPosition());
+                }
+                else {
+                    //each item is a Page setup class
+                    add_menu_page(
+                            $controller->getPageTitle(),
+                            $controller->getOptionTitle(),
+                            $controller->getCapabilities(),
+                            $option,
+                            array($controller, '__execute'),
+                            $controller->getIcon(),
+                            $controller->getPosition());
+                }
+            }
+        }, 10000 );
+
         return $this;
     }
     /**
@@ -402,23 +403,15 @@ abstract class CodersApp{
         return $this;
     }
     /**
-     * @param string $endpoint
-     * @return \CODERS\Framework\Request
-     * @throws Exception
+     * @return array
      */
-    /*public static final function request( $endpoint ){
-
-        global $wp;
-
-        $query = $wp->query_vars;
-
-        //is permalink route
-        return ( array_key_exists($endpoint, $query) ) ||
-                ( array_key_exists(self::APPQUERY, $query)
-                && $endpoint === $query[self::APPQUERY]) ?
-                    \CODERS\Framework\Request::import( $endpoint ) :
-                    FALSE;
-    }*/
+    public function listModules(){
+        return array(
+            'admin',
+            'public',
+            'ajax',
+        );
+    }
     /**
      * @return \CODERS\Framework\Response
      */

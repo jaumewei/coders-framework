@@ -9,12 +9,18 @@ interface IModel{
      */
     function __toString();
     /**
-     * 
+     * @param strinig $name
+     * @return string
      */
-    function get( $name );
+    function __get( $name );
     /**
-     * @param string $var
+     * @param string $name
+     * @param mixed $default
+     */
+    function get( $name , $default = null );
+    /**
+     * @param string $name
      * @return boolean
      */
-    function has( $var );
+    function has( $name );
 }
